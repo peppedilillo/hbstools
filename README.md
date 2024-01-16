@@ -11,9 +11,7 @@ HERMES Burst Search Tools uses a cutting edge changepoint detection algorithm ca
 * _Dilillo, G., Ward, K., Eckley, I. A., Fearnhead, P., Crupi, R., Evangelista, Y., Vaccjo. A., & Fiore, F. (2023). Gamma-ray burst detection with Poisson-FOCuS and other trigger algorithms. arXiv preprint arXiv:2312.08817._
 
 
-## Setup:
-
-## Downloading 
+## Setup
 
 To download this repository, click on the "Code" green button at top right, then click on "Download ZIP".
 Unzip the archive where best suited. This will become your installation folder.
