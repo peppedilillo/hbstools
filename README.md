@@ -13,7 +13,7 @@ HERMES Burst Search Tools uses a cutting edge changepoint detection algorithm ca
 
 ## Setup:
 
-### Downloading 
+## Downloading 
 
 To download this repository, click on the "Code" green button at top right, then click on "Download ZIP".
 Unzip the archive where best suited. This will become your installation folder.
@@ -21,7 +21,7 @@ Unzip the archive where best suited. This will become your installation folder.
 Otherwise, if you have `git` installed, `cd` to the installation folder and run `git clone xxx`.
 
 
-### Installing with Anaconda
+## Installing with Anaconda
 
 Supposing you downloaded hbstools to `/path_to/hbstools`, run:
 
@@ -41,7 +41,7 @@ try `mercury --help`.
 
 > ❗ **Remember to always activate your environment**, otherwise you won't be able to use hbstools or mercury.
 
-### Installing with venv
+## Installing with venv
 
 If you are installing with a virtual environment, `cd` to the folder where you downloaded hbstools, then run:
 
