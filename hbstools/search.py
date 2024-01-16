@@ -60,13 +60,14 @@ class Search:
         self,
         data: pd.DataFrame,
     ):
+        """Filters data in an energy band."""
         low, hi = self.enlims
         return data[(data["ENERGY"] >= low) & (data["ENERGY"] < hi)]
 
     def bin_data(
         self, data: pd.DataFrame, gti: GTI, binning: float
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Bins data in time and filters in energy."""
+        """Bins data in time."""
         bins = self.make_bins(gti.start, gti.end, binning)
         return np.histogram(data["TIME"], bins=bins)
 

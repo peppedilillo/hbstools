@@ -76,45 +76,46 @@ skip: 3000
 
 algorithm_params:
  # The `threshold` keyword sets the confidence level for detection.
- # The higher the threshold, the less false positive but the more false negative.
+ # The higher the threshold, the less false positive but the more the false negatives.
  # The threshold is expressed in units of standard deviations.
  # Must be greater than 0.
  threshold: 5.5
 
- # The `mu_min` key seta focus parameter for killing old changepoints 
+ # The `mu_min` key set the focus parameter for killing old changepoints 
  # which most likely will never result in a trigger. Keep it below 1.5.
- # Must be greater than 1.
+ # Must be greater or equal than 1.0. Disabled if it equals 1.0.
  mu_min: 1.1
  
- # The `alpha` keyword sets the background smoothing characteristic time  \tau,
- # \tau = (binning/0.005).
+ # The `alpha` keyword sets the background smoothing characteristic time \tau, 
+ # where \tau = (binning/0.005).
  # Must be greater than 0.
  alpha: 0.005
 
  # The `beta` keyword sets the trend component for background estimate.
  # The algorithm may become unstable when `beta` is set: leave it `0.0` unless
  # you have good reasons to use it.
- # Must be greater than 0.
+ # Must be non-negative.
  beta: 0.0
 
- # The `m` keyword will prevent the most recent observed count to be used for 
+ # The `m` keyword will prevent the most recent observed counts to be used for 
  # background estimation. This prevents background estimate to be "polluted"
  # by real transients. 
  # It is expressed in units of bin-steps. This means that if `binning` is set
- # to 0.1 and `m` is set to 40, the algorithm won't work use the latest 4.0 s
- # of data in background estimate. 
+ # to 0.1 and `m` is set to 40, the algorithm won't use the latest 4.0 s
+ # of data for background estimate. 
  # Must be a non-negative integer.
  m: 40
 
  # The `t_max` parameter tells the algorithm to kill old changepoint.
- # It is a good idea to keep it equal to `m`. Also expressed as a bin-step.
+ # It is a good idea to keep it equal to `m`. 
+ # It is expressed as a bin-step, see `m` or `skip`.
  # Must be an integer greater than 0.
  t_max: 40
 
- # The algorithms stays idle for a while before startin its operations.
+ # The algorithms stays idle for a while before starting its operations.
  # This help forming a good estimate of the background. 
  # The `sleep` parameters sets for how long this idle period lasts.
- # The `sleep` parameter is expressed as a bin-step.
+ # The `sleep` parameter is expressed as a bin-step, see `m` or `skip`.
  # Must be an integer greater than `m`.
  sleep: 1600
 
@@ -220,7 +221,7 @@ def parse_user_else_default_config(config_path: Path | None) -> dict:
 
 def crawler(
     directory: Path | str,
-    look_for: list[str],
+    target: list[str],
     recursion_limit: int = 2,
 ) -> list[Path]:
     """Crawls through folder looking for subfolders containing a specific set of files."""
@@ -228,8 +229,8 @@ def crawler(
     def get_subdirs(dir_: Path) -> list[Path]:
         return [d for d in dir_.iterdir() if d.is_dir()]
 
-    def directory_contains(dir_: Path, content: list[Path]) -> bool:
-        for file in content:
+    def directory_contains(dir_: Path, target: list[Path]) -> bool:
+        for file in target:
             if not dir_.joinpath(file).is_file():
                 return False
         return True
@@ -249,7 +250,7 @@ def crawler(
         check_subdirs(get_subdirs(dir_), lf, reclim, recnum, acc)
         return acc
 
-    return check_dir(Path(directory), look_for, recursion_limit, 0, [])
+    return check_dir(Path(directory), target, recursion_limit, 0, [])
 
 
 @click.group()
