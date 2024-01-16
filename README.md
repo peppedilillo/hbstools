@@ -8,7 +8,7 @@ It is composed of a main library, called `hbstools`, and a collection of scripts
 HERMES Burst Search Tools uses a cutting edge changepoint detection algorithm called Poisson FOCuS for discovering new astrophysical events. See:
 
 * _Ward, K., Dilillo, G., Eckley, I., & Fearnhead, P. (2023). Poisson-FOCuS: An efficient online method for detecting count bursts with application to gamma ray burst detection. Journal of the American Statistical Association, 1-13._
-* _Dilillo, G., Ward, K., Eckley, I. A., Fearnhead, P., Crupi, R., Evangelista, Y., Vaccjo. A., & Fiore, F. (2023). Gamma-ray burst detection with Poisson-FOCuS and other trigger algorithms. arXiv preprint arXiv:2312.08817._
+* _Dilillo, G., Ward, K., Eckley, I. A., Fearnhead, P., Crupi, R., Evangelista, Y., Vacchi, A., & Fiore, F. (2023). Gamma-ray burst detection with Poisson-FOCuS and other trigger algorithms. arXiv preprint arXiv:2312.08817._
 
 
 ## Setup
@@ -16,7 +16,12 @@ HERMES Burst Search Tools uses a cutting edge changepoint detection algorithm ca
 To download this repository, click on the "Code" green button at top right, then click on "Download ZIP".
 Unzip the archive where best suited. This will become your installation folder.
 
-Otherwise, if you have `git` installed, `cd` to the installation folder and run `git clone xxx`.
+Otherwise, if you have `git` installed, `cd` to the installation folder and run:
+
+`git clone https://github.com/peppedilillo/hbstools.git`
+
+This will create a directory called `hbstools` with the content of this repository.
+We can now proceed to install the software and its dependencies.
 
 
 ## Installing with Anaconda
@@ -25,8 +30,8 @@ Supposing you downloaded hbstools to `/path_to/hbstools`, run:
 
 1. `cd /path_to/hbstools`
 2. `conda create -n hbstools python=3.11 poetry`
-3`conda activate hbstools`
-4`poetry install`
+3. `conda activate hbstools`
+4. `poetry install`
 
 Done!
 
@@ -52,7 +57,7 @@ If you are installing with a virtual environment, `cd` to the folder where you d
 ### Uninstalling
 If you are not using [poetry](https://python-poetry.org/) for other projects, you can run the following command, else refer to [this link](https://python-poetry.org/docs/managing-environments/#:~:text=Deleting%20the%20environments,-Finally%2C%20you%20can&text=You%20can%20delete%20more%20than%20one%20environment%20at%20a%20time.&text=Use%20the%20%2D%2Dall%20option%20to%20delete%20all%20virtual%20environments%20at%20once.&text=If%20you%20remove%20the%20currently,it%20will%20be%20automatically%20deactivated.).
 
-1. `poetry env remove --all`
+`poetry env remove --all`
 
 If you installed with Anaconda, also run `conda env remove -n hbstools`.
 
@@ -88,12 +93,12 @@ You can get a configuration stub using:
 
 This will create a commented configuration file which you can modify with a text editor. 
 To run `mercury search` with configuration `myconfig.yml`, run `mercury search -c myconfig.yml .`.
-You can get a less verbose configuration file using `mercury --quiet drop .`
+If you don't need comments, calling `mercury --quiet drop .` will get you a less verbose configuration file. 
 
 ### Results
 
 By default results are saved in the input directory in FITS format.
-You can change the output file using `mercury search . -o myresults-filename.fits`
+Using `mercury search . -o myresults-filename.fits` you will change the output file to `myresults-filename.fits`.
 
 
 
@@ -106,4 +111,5 @@ Download the archive and unzip it:
 2. `cd /path_to/demodataset`
 3. `mercury search .`
 
-This supposing you installed `hbstools` with Anaconda. If you didn't, go to your virtual environment's bin directory and activate it with `source activate`.
+This supposing you installed `hbstools` with Anaconda. 
+If you didn't, go to your virtual environment's bin directory and call `source activate` to activate it.
