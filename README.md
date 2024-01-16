@@ -10,8 +10,7 @@ HERMES Burst Search Tools uses a changepoint detection algorithm called Poisson 
 * _Dilillo, G., Ward, K., Eckley, I. A., Fearnhead, P., Crupi, R., Evangelista, Y., Vacchi, A., & Fiore, F. (2023). Gamma-ray burst detection with Poisson-FOCuS and other trigger algorithms. arXiv preprint arXiv:2312.08817._
 
 
-## Setup
-
+# Setup
 ### Download
 First download this repository. 
 If you have `git` installed, you can do so running from terminal:
@@ -87,8 +86,7 @@ Using `mercury search . -o myresults-filename.fits` you will change the output f
 > ❗ **To get help with mercury run `mercury --help`.**
 > To get help on a particular command, such as `search`, you call `mercury search --help`.
 
-
-## Demo dataset
+### Demo dataset
 We have uploaded a demo dataset [online](https://drive.google.com/file/d/1kC473-QQsLWrClxKRHT8JJCIJr_KO_4_/view?usp=sharing).
 Download the archive and unzip it:
 
