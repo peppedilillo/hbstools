@@ -88,7 +88,7 @@ Using `mercury search . -o myresults-filename.fits` you will change the output f
 
 ### Demo dataset
 We have uploaded a demo dataset [online](https://drive.google.com/file/d/1kC473-QQsLWrClxKRHT8JJCIJr_KO_4_/view?usp=sharing).
-Download the archive and unzip it:
+Download the archive and unzip it then, from terminal:
 
 1. `conda activate hbstools`
 2. `cd /path_to/demodataset`
