@@ -1,3 +1,8 @@
+"""
+A wrapper to Poisson-FOCuS implementing background estimate via double
+exponential smoothing.
+"""
+
 from collections import deque
 from math import sqrt
 from typing import Deque, Sequence

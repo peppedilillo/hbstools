@@ -1,6 +1,6 @@
 """
-A wrapper to Poisson-FOCuS implementing background estimate via double
-exponential smoothing.
+An implementation of Poisson FOCuS with optimizations.
+See Ward 2023 & Dilillo 2024.
 """
 
 from math import inf
