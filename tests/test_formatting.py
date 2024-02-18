@@ -1,6 +1,6 @@
 import unittest
 
-from hbstools.search import Search
+from hbstools import Search
 from hbstools.types import GTI
 
 parameters = {

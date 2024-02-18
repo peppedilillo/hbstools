@@ -8,7 +8,7 @@ from rich.progress import track
 
 from hbstools.data import get_data
 from hbstools.io import get_gtis
-from hbstools.poissonfocus import PoissonFocusDES
+from hbstools.triggers import PoissonFocusDES
 from hbstools.types import Change
 from hbstools.types import ChangeMET
 from hbstools.types import GTI

@@ -3,7 +3,7 @@ import unittest
 
 import numpy as np
 
-from hbstools.search import Search
+from hbstools import Search
 
 inputs = [
     (0.05, 0.28, 0.1),
