@@ -4,8 +4,6 @@
 **/.ipynb_checkpoints
 **/.mypy-cache
 **/*.fits
-bin
-lib
-pyvenv.cfg
+*venv*/
 notebooks
 data

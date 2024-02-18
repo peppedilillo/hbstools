@@ -12,8 +12,8 @@ from yaml import dump as write_yaml
 from yaml import safe_load as read_yaml
 from yaml import YAMLError
 
-from hbstools.io import write_ttis_to_fits
 from hbstools import Search
+from hbstools.io import write_ttis_to_fits
 
 LOGO = """
                         
