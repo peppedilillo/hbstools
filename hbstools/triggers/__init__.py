@@ -1,2 +1,3 @@
 from hbstools.triggers.poissonfocus import PoissonFocus
 from hbstools.triggers.poissonfocusdes import PoissonFocusDES
+from hbstools.triggers.cpoissonfocusses import PoissonFocusSES
