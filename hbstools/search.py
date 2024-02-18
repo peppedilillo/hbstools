@@ -8,7 +8,7 @@ from rich.progress import track
 
 from hbstools.data import get_data
 from hbstools.io import get_gtis
-from hbstools.triggers import PoissonFocusDES
+from hbstools.triggers import PoissonFocusSES
 from hbstools.types import Changepoint
 from hbstools.types import ChangepointMET
 from hbstools.types import GTI
@@ -40,7 +40,7 @@ class Search:
         self.skip = skip
         self.enlims = energy_lims
         self.algorithm_params = algorithm_params
-        self.algorithm = PoissonFocusDES
+        self.algorithm = PoissonFocusSES
         self.console = console
 
     def __call__(self, dataset: Sequence[Path | str]) -> pd.DataFrame:
@@ -131,7 +131,7 @@ class Search:
 
             # fmt: off
             if self.console:
-                self.console.log(f"[dim]On GTI chunk {gti.start:.1f}-{gti.end:.1f}")
+                self.console.log(f"[dim]On GTI chunk {gti.start:.1f}-{gti.end:.1f}..")
                 if anomalies:
                     self.console.log(f"Found [b]{len(anomalies)}[/] transient{'s' if len(anomalies) > 1 else ''}")
                     for i, r in enumerate(results[gti], start=1):

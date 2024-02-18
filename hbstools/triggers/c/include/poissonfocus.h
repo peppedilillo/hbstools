@@ -7,7 +7,7 @@
 
 #define PF_MAXCURVES 64
 
-typedef int32_t count_t;
+typedef long count_t;
 
 enum pf_errors
 {

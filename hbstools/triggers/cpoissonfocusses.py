@@ -68,14 +68,10 @@ class PoissonFocusSES:
         self.sleep = sleep
         self._call = self.bind()
 
-    def run(self, xs: npt.NDArray[np.int32]) -> tuple[float, int, int]:
-        # TODO: find a way to avoid this shitty casting
-        if xs.dtype != np.int32:
-            xs = xs.astype(np.int32)
-
+    def run(self, xs: npt.NDArray[np.int_]) -> tuple[float, int, int]:
         c = _Changepoint()
         xs_length = len(xs)
-        xs_pointer = xs.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
+        xs_pointer = xs.ctypes.data_as(ctypes.POINTER(ctypes.c_long))
         error_code = self._call(
             ctypes.byref(c),
             xs_pointer,
@@ -102,7 +98,7 @@ class PoissonFocusSES:
         pfs_interface.restype = _Errors
         pfs_interface.argtypes = [
             ctypes.POINTER(_Changepoint),
-            ctypes.POINTER(ctypes.c_int32),
+            ctypes.POINTER(ctypes.c_long),
             ctypes.c_size_t,
             ctypes.c_double,
             ctypes.c_double,
