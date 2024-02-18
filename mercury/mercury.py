@@ -76,50 +76,50 @@ skip: 3000
 
 algorithm_params:
  # The `threshold` keyword sets the confidence level for detection.
- # The higher the threshold, the less false positive but the more the false negatives.
+ # The higher the threshold, the less false positive but the more false negative.
  # The threshold is expressed in units of standard deviations.
  # Must be greater than 0.
- threshold: 5.5
+ threshold_std: 5.5
 
- # The `mu_min` key set the focus parameter for killing old changepoints 
+ # The `mu_min` key seta focus parameter for killing old changepoints 
  # which most likely will never result in a trigger. Keep it below 1.5.
- # Must be greater or equal than 1.0. Disabled if it equals 1.0.
+ # Must be greater than 1.
  mu_min: 1.1
  
- # The `alpha` keyword sets the background smoothing characteristic time \tau, 
- # where \tau = (binning/0.005).
+ # The `alpha` keyword sets the background smoothing characteristic time  	au,
+ # 	au = (binning/0.005).
  # Must be greater than 0.
  alpha: 0.005
 
  # The `beta` keyword sets the trend component for background estimate.
  # The algorithm may become unstable when `beta` is set: leave it `0.0` unless
  # you have good reasons to use it.
- # Must be non-negative.
+ # Must be greater than 0.
  beta: 0.0
 
- # The `m` keyword will prevent the most recent observed counts to be used for 
+ # The `m` keyword will prevent the most recent observed count to be used for 
  # background estimation. This prevents background estimate to be "polluted"
  # by real transients. 
  # It is expressed in units of bin-steps. This means that if `binning` is set
- # to 0.1 and `m` is set to 40, the algorithm won't use the latest 4.0 s
- # of data for background estimate. 
- # Must be a non-negative integer.
+ # to 0.1 and `m` is set to 40, the algorithm won't work use the latest 4.0 s
+ # of data in background estimate. 
+ # Must be a positive integer.
  m: 40
 
  # The `t_max` parameter tells the algorithm to kill old changepoint.
- # It is a good idea to keep it equal to `m`. 
- # It is expressed as a bin-step, see `m` or `skip`.
- # Must be an integer greater than 0.
+ # It is a good idea to keep it equal to `m`. Also expressed as a bin-step.
+ # Must be a positive integer.
  t_max: 40
 
- # The algorithms stays idle for a while before starting its operations.
+ # The algorithms stays idle for a while before startin its operations.
  # This help forming a good estimate of the background. 
  # The `sleep` parameters sets for how long this idle period lasts.
- # The `sleep` parameter is expressed as a bin-step, see `m` or `skip`.
- # Must be an integer greater than `m`.
- sleep: 1600
-
-"""
+ # In particular, testing for anomalies will start after `m + sleep` bin-steps.
+ # The `sleep` parameter is expressed as a bin-step.
+ # Must be a non-negative integer.
+ sleep: 120
+ 
+ """
 
 
 def _default_config() -> tuple[Callable, Callable]:
@@ -171,7 +171,7 @@ config_schema = ConfigSchema(
             error="`skip` must be a non-negative integer",
         ),
         "algorithm_params": {
-            "threshold": And(
+            "threshold_std": And(
                 Use(float),
                 lambda t: t > 0,
                 error="`threshold` must be positive.",
@@ -192,16 +192,16 @@ config_schema = ConfigSchema(
                 error="`mu_min` must be equal or greater than one",
             ),
             "m": And(
-                lambda m: isinstance(m, int) & (m >= 0),
-                error="`m` must be a non negative integer.",
-            ),
-            "t_max": And(
-                lambda t: isinstance(t, int) & (t > 0),
-                error="`t_max must be an integer greater than zero",
+                lambda m: isinstance(m, int) & (not m < 1),
+                error="`m` must be a positive integer.",
             ),
             "sleep": And(
-                lambda t: isinstance(t, int) & (t >= 0),
-                error="`sleep` must be non negative",
+                lambda sleep: isinstance(sleep, int) & (not sleep < 0),
+                error="`sleep` must be a non-negative integer.",
+            ),
+            "t_max": And(
+                lambda t_max: isinstance(t_max, int) & (not t_max < 1),
+                error="`t_max must be a positive integer.",
             ),
         },
     },

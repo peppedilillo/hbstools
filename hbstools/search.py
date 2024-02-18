@@ -9,8 +9,8 @@ from rich.progress import track
 from hbstools.data import get_data
 from hbstools.io import get_gtis
 from hbstools.triggers import PoissonFocusDES
-from hbstools.types import Change
-from hbstools.types import ChangeMET
+from hbstools.types import Changepoint
+from hbstools.types import ChangepointMET
 from hbstools.types import GTI
 from hbstools.types import MET
 from hbstools.types import TTI
@@ -74,27 +74,23 @@ class Search:
     def run(
         self,
         xs: Sequence[int],
-        bins: Sequence[float] | None = None,
-    ) -> Change:
+    ) -> Changepoint:
         """Run the algorithm one step a time."""
-        algorithm = self.algorithm(**self.algorithm_params)
-        for t, x_t in enumerate(xs):
-            significance, offset = algorithm.step(x_t)
-            if significance:
-                return significance, t - offset + 1, t
-        return 0.0, len(xs) + 1, len(xs)
+        # resets the algorithm at each call
+        changepoint = self.algorithm(**self.algorithm_params).run(xs)
+        return changepoint
 
     def run_on_segment(
         self,
         counts: np.ndarray,
         bins: np.ndarray,
-    ) -> list[Change]:
+    ) -> list[Changepoint]:
         """Runs on binned data restarting the algorithm after sleep."""
 
         def f(cs, bs, skip, acc):
             if not len(cs):
                 return []
-            s, cp, tt = self.run(cs, bs)
+            s, cp, tt = self.run(cs)
             # if ended with no trigger algorithm returns 0, len(xs) + 1, len(xs)
             t = [(s, acc + cp, acc + tt)] if tt >= cp else []
             return t + f(cs[tt + skip :], bs[tt + skip :], skip, acc + tt + skip)
@@ -104,7 +100,7 @@ class Search:
     def run_on_dataset(
         self,
         dataset: Sequence[Path | str],
-    ) -> dict[GTI, list[ChangeMET]]:
+    ) -> dict[GTI, list[ChangepointMET]]:
         """Runs on every gtis and returns anomalies."""
 
         def map_bins_to_times(rs, bs):
@@ -185,7 +181,7 @@ class Search:
 
     def format_result(
         self,
-        result: ChangeMET,
+        result: ChangepointMET,
         gti: GTI,
     ) -> TTI:
         """Transforms focus results (times expressed as mets) into events formatted like:
@@ -195,11 +191,12 @@ class Search:
         bkg_pre = self.compute_bkg_pre(trigtime, changepoint, gti)
         bkg_post_start, bkg_post_end = self.compute_bkg_post(trigtime, changepoint, gti)
         event_interval = changepoint, changepoint + bkg_post_start
+        # noinspection PyTypeChecker
         return *bkg_pre, *event_interval, bkg_post_start, bkg_post_end
 
     def make_ttis(
         self,
-        results: dict[GTI, list[ChangeMET]],
+        results: dict[GTI, list[ChangepointMET]],
     ) -> pd.DataFrame:
         """Puts ttis into a dataframe"""
         formatted_results = []
