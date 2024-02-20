@@ -25,11 +25,7 @@ def library_path(libname: str) -> str:
     return str(Path(__file__).parent / f"{libname}{suffix}")
 
 
-clib_pfs = ctypes.CDLL(library_path(".sharedlibs/libc_pfocus"))
-
-
-class InvalidBackgroundError(Exception):
-    """An error thrown when FOCuS is fed a bad background value."""
+clib_pfs = ctypes.CDLL(library_path(".sharedlibs/lib-pfocus"))
 
 
 class _Errors(enum.IntEnum):
@@ -37,7 +33,6 @@ class _Errors(enum.IntEnum):
     NO_ERRORS = 0
     INVALID_ALLOCATION = 1
     INVALID_INPUT = 2
-    INVALID_BACKGROUND = 3
 
 
 class _Changepoint(ctypes.Structure):
@@ -84,12 +79,10 @@ class PoissonFocusSES:
         )
 
         match error_code:
-            case _Errors.INVALID_BACKGROUND:
-                raise InvalidBackgroundError("Invalid background.")
             case _Errors.INVALID_INPUT:
-                raise ValueError("Invalid input")
+                raise ValueError("The inputs contain invalid entries.")
             case _Errors.INVALID_ALLOCATION:
-                raise BufferError("Invalid allocation")
+                raise BufferError("Can't allocate memory for the algorithm.")
         return c.significance_std, c.changepoint, c.triggertime
 
     @staticmethod

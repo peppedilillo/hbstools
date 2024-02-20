@@ -17,8 +17,8 @@ struct curve
 	double m;
 };
 
-static struct curve NULL_CURVE = (struct curve){ 0 };
-static struct curve TAIL_CURVE = (struct curve){ COUNT_MAX, 0., 0, 0. };
+static struct curve NULL_CURVE;
+static struct curve TAIL_CURVE;
 
 /**
  * A stack implementation over a circular buffer, with curve elements.
@@ -136,8 +136,8 @@ struct change
 
 enum status_codes
 {
-	RUNNING = 0,
-	STOPPED
+	TEST = 0,
+	STOP
 };
 
 struct status
@@ -159,7 +159,7 @@ struct pf
  * Defines and checks the domain of the init function arguments.
  * Returns an error if the arguments are invalid.
  */
-enum pf_errors pf_check_inputs(double threshold_std, double mu_min)
+enum pf_errors pf_check_init_parameters(double threshold_std, double mu_min)
 {
 	if (
 		threshold_std <= 0.0 ||
@@ -178,7 +178,7 @@ static struct pf*
 init_helper(struct pf* f, struct stack* curves, double threshold_std, double mu_min)
 {
 	f->status = (struct status){
-		RUNNING,
+		TEST,
 		PF_NO_ERRORS
 	};
 	f->curves = curves;
@@ -186,6 +186,8 @@ init_helper(struct pf* f, struct stack* curves, double threshold_std, double mu_
 	f->threshold_llr = threshold_std * threshold_std / 2;
 	f->mu_crit = (mu_min == 1. ? 1.0 : (mu_min - 1) / log(mu_min));
 
+	NULL_CURVE = (struct curve){ 0 };
+	TAIL_CURVE = (struct curve){ COUNT_MAX, 0., 0, 0. };
 	stack_push(curves, &TAIL_CURVE);
 	stack_push(curves, &NULL_CURVE);
 	return f;
@@ -322,21 +324,21 @@ pf_step(struct pf* f, bool* t, count_t x, double b)
 {
 	switch (f->status.code)
 	{
-	case RUNNING :
+	case TEST :
 	{
-		if (b <= 0)
+		if (b <= 0 || x < 0)
 		{
-			f->status.code = STOPPED;
-			f->status.latest_error = PF_ERROR_INVALID_BACKGROUND;
+			f->status.code = STOP;
+			f->status.latest_error = PF_ERROR_INVALID_INPUT;
 			f->change = (struct change){ 0 };
 			*t = false;
-			return PF_ERROR_INVALID_BACKGROUND;
+			return PF_ERROR_INVALID_INPUT;
 		}
 		f->change = step_helper(f, x, b);
 		*t = triggered(f);
 		break;
 	}
-	case STOPPED :
+	case STOP :
 	{
 		return f->status.latest_error;
 	}
@@ -427,7 +429,7 @@ pf_change2changepoint(struct pf_change c, size_t t)
 enum pf_errors
 pf_interface(struct pf_changepoint* cp, count_t* xs, double* bs, size_t len, double threshold, double mu_min)
 {
-	enum pf_errors err;
+	enum pf_errors err = PF_NO_ERRORS;
 	PoissonFocus* focus = pf_init(&err, threshold, mu_min);
 
 	// inititalization can fail either because of wrong inputs,
@@ -448,7 +450,7 @@ pf_interface(struct pf_changepoint* cp, count_t* xs, double* bs, size_t len, dou
 	{
 		err = pf_step(focus, &got_trigger, xs[t], bs[t]);
 
-		if (err == PF_ERROR_INVALID_BACKGROUND)
+		if (err == PF_ERROR_INVALID_INPUT)
 		{
 			// the focus_step fails if it is provided with a non-positive background.
 			// if this happens at iteration `t`, we return immediately with
@@ -474,5 +476,5 @@ pf_interface(struct pf_changepoint* cp, count_t* xs, double* bs, size_t len, dou
 	*cp = pf_change2changepoint(pf_get_change(focus),
 		t == len ? t - 1 : t);
 	pf_terminate(focus);
-	return PF_NO_ERRORS;
+	return err;
 }

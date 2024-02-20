@@ -87,9 +87,18 @@ static count_t queue_dequeue(struct queue* q)
  * Now the actual implementation of focus with automatic background estimate
  * through single exponential smoothin.
  */
-enum schedule
+enum status_codes
 {
-	COLLECT, UPDATE, TEST
+	COLLECT = 0,
+	UPDATE,
+	TEST,
+	STOP,
+};
+
+struct status
+{
+	enum status_codes code;
+	enum pfs_errors latest_error;
 };
 
 struct pfs
@@ -101,20 +110,20 @@ struct pfs
 	int sleep;
 	int t;
 	double lambda_t;
-	enum schedule schedule;
+	struct status status;
 };
 
 /**
  * Defines and checks the domain of the init function arguments.
  * Will return an error if the arguments are invalid.
  */
-enum pfs_errors pfs_check_inputs(double threshold_std, double mu_min,
+enum pfs_errors pfs_check_init_parameters(double threshold_std, double mu_min,
 	double alpha, int m, int sleep)
 {
 	// @formatter:off
   if (
-	  pf_check_inputs(threshold_std, mu_min)
-	  == PF_ERROR_INVALID_INPUT ||
+	  pf_check_init_parameters(threshold_std, mu_min)
+	     == PF_ERROR_INVALID_INPUT ||
 	              alpha     <  0.0 ||
 				  alpha     >  1.0 ||
 				  m         <  1   ||
@@ -142,7 +151,10 @@ static struct pfs* init_helper(struct pfs* f,
 	f->m = m;
 	f->sleep = sleep;
 	f->t = sleep + m;
-	f->schedule = COLLECT;
+	f->status = (struct status){
+		COLLECT,
+		PFS_NO_ERRORS
+	};
 	return f;
 }
 
@@ -162,7 +174,7 @@ static struct pfs* init_helper(struct pfs* f,
 struct pfs* pfs_init(enum pfs_errors* e, double threshold_std,
 	double mu_min, double alpha, int m, int sleep)
 {
-	if (pfs_check_inputs(threshold_std, mu_min, alpha, m, sleep))
+	if (pfs_check_init_parameters(threshold_std, mu_min, alpha, m, sleep))
 	{
 		*e = PFS_ERROR_INVALID_INPUT;
 		return NULL;
@@ -222,7 +234,6 @@ static void set_initial_bkg(struct pfs* f)
 	struct queue* q = f->queue;
 	assert(queue_full(q));
 
-	// sum elements in queue
 	count_t total = 0;
 	int i = q->head;
 	while (i != q->tail)
@@ -232,7 +243,6 @@ static void set_initial_bkg(struct pfs* f)
 			i = 0;
 	}
 
-	// set to mean
 	f->lambda_t = (double)total / f->m;
 }
 
@@ -240,10 +250,10 @@ static void set_initial_bkg(struct pfs* f)
  * Updates background estimate through exponential smoothing.
  * Returns a background estimate based on past observations.
  */
-static double update_bkg(struct pfs* f, count_t x)
+static double update_bkg(struct pfs* f, count_t x_t)
 {
 	double old_lambda = f->lambda_t;
-	double lambda_t = f->alpha * x + (1 - f->alpha) * old_lambda;
+	double lambda_t = f->alpha * x_t + (1 - f->alpha) * old_lambda;
 	return lambda_t;
 }
 
@@ -266,34 +276,32 @@ static inline bool triggered(struct pfs* f, const bool* focus_triggered)
 /**
  * Gets the oldest count out of queue, and use it to update the background
  * estimate. Then, feed the background estimate and the most recent count to
- * focus. Will return an error if focus is fed with a negative background.
- * This can happen, for example when starting off with a  long streaks of zero
- * counts due to an off detector.
+ * focus. Will return an error if focus is fed a negative background or count.
  */
 static inline enum pf_errors
-step_test(struct pfs* f, bool* got_trigger, count_t x)
+step_test(struct pfs* f, bool* trigflag, count_t x_t)
 {
 	// updates background and queue
 	count_t x_t_m = queue_dequeue(f->queue);
 	f->lambda_t = update_bkg(f, x_t_m);
-	queue_enqueue(f->queue, x);
+	queue_enqueue(f->queue, x_t);
 
 	// feeds focus and checks if we got triggers
 	bool focus_triggered;
 	enum pf_errors err;
-	err = pf_step(f->focus, &focus_triggered, x, f->lambda_t);
-	*got_trigger = triggered(f, &focus_triggered);
+	err = pf_step(f->focus, &focus_triggered, x_t, f->lambda_t);
+	*trigflag = triggered(f, &focus_triggered);
 	return err;
 }
 
 /**
  * Gets oldest count out of queue and use it to update the background estimate.
  */
-static inline void step_update(struct pfs* f, count_t x)
+static inline void step_update(struct pfs* f, count_t x_t)
 {
 	count_t x_t_m = queue_dequeue(f->queue);
 	f->lambda_t = update_bkg(f, x_t_m);
-	queue_enqueue(f->queue, x);
+	queue_enqueue(f->queue, x_t);
 }
 
 /**
@@ -302,21 +310,24 @@ static inline void step_update(struct pfs* f, count_t x)
  * if you got a trigger.
  *
  * @param f : a pointer to an initialized structure.
- * @param t : this is a bool flag, we will write to this if
- * we found any trigger during the update
+ * @param trigflag : this is a bool flag, we will write here if we found a trigger.
  * @param x_t : latest count.
  * @return : error code
  */
-enum pfs_errors pfs_step(PoissonFocusSES* f, bool* t, count_t x_t)
+enum pfs_errors pfs_step(PoissonFocusSES* f, bool* trigflag, count_t x_t)
 {
-	switch (f->schedule)
+	switch (f->status.code)
 	{
 	case TEST:
 	{
-		// at this point we should have an initial guess on background.
-		if (step_test(f, t, x_t)
-			== PF_ERROR_INVALID_BACKGROUND)
-			return PFS_ERROR_INVALID_BACKGROUND;
+		// update bkg and run focus test.
+		if (step_test(f, trigflag, x_t) == PF_ERROR_INVALID_INPUT)
+		{
+			// focus stopped because of an invalid input. we stop too.
+			f->status.code = STOP;
+			f->status.latest_error = PFS_ERROR_INVALID_INPUT;
+			return PFS_ERROR_INVALID_INPUT;
+		}
 		break;
 	}
 	case UPDATE:
@@ -326,7 +337,7 @@ enum pfs_errors pfs_step(PoissonFocusSES* f, bool* t, count_t x_t)
 		step_update(f, x_t);
 		// `t` acts as a countdown, when it gets to 0 we start operations.
 		if (--f->t == 0)
-			f->schedule = TEST;
+			f->status.code = TEST;
 		break;
 	}
 	case COLLECT:
@@ -338,9 +349,14 @@ enum pfs_errors pfs_step(PoissonFocusSES* f, bool* t, count_t x_t)
 			assert(queue_full(f->queue));
 			set_initial_bkg(f);
 			// if sleep is 0 we start testing at next iteration.
-			f->schedule = f->sleep ? UPDATE : TEST;
+			f->status.code = f->sleep ? UPDATE : TEST;
 		}
 		break;
+	}
+	case STOP:
+	{
+		// an error happened. do nothing and return the error.
+		return f->status.latest_error;
 	}
 	}
 	return PFS_NO_ERRORS;
@@ -391,7 +407,7 @@ pfs_interface(struct pf_changepoint* cp, count_t* xs, size_t len,
 	double threshold_std, double mu_min,
 	double alpha, int m, int sleep)
 {
-	enum pfs_errors err;
+	enum pfs_errors err = PFS_NO_ERRORS;
 	PoissonFocusSES* focusexp = pfs_init(&err, threshold_std, mu_min, alpha, m, sleep);
 
 	// inititalization can fail either because of wrong inputs,
@@ -411,7 +427,7 @@ pfs_interface(struct pf_changepoint* cp, count_t* xs, size_t len,
 	{
 		err = pfs_step(focusexp, &got_trigger, xs[t]);
 
-		if (err == PFS_ERROR_INVALID_BACKGROUND)
+		if (err == PFS_ERROR_INVALID_INPUT)
 		{
 			// the focus_step fails if it is provided with a non-positive background.
 			// if this happens at iteration `t`, we return immediately with
@@ -437,5 +453,5 @@ pfs_interface(struct pf_changepoint* cp, count_t* xs, size_t len,
 	*cp = pf_change2changepoint(pfs_get_change(focusexp),
 		t == len ? t - 1 : t);
 	pfs_terminate(focusexp);
-	return PFS_NO_ERRORS;
+	return err;
 }

@@ -19,11 +19,11 @@ struct bft
  * Defines and checks the domain of the init function arguments.
  * Returns an error if the arguments are invalid.
  */
-enum bft_errors bft_check_inputs(double threshold_std, double mu_min,
+enum bft_errors bft_check_init_parameters(double threshold_std, double mu_min,
 	double alpha, int m, int sleep)
 {
 	if (
-		pfs_check_inputs(
+		pfs_check_init_parameters(
 			threshold_std, mu_min,
 			alpha, m, sleep)
 		== PFS_ERROR_INVALID_INPUT
@@ -60,7 +60,7 @@ static struct bft* init_helper(struct bft* bft, PoissonFocusSES** fs,
 struct bft* bft_init(enum bft_errors* e, double threshold_std, double mu_min,
 	double alpha, int m, int sleep)
 {
-	if (bft_check_inputs(threshold_std, mu_min, alpha, m, sleep))
+	if (bft_check_init_parameters(threshold_std, mu_min, alpha, m, sleep))
 	{
 		*e = BFT_ERROR_INVALID_INPUT;
 		return NULL;
@@ -127,7 +127,7 @@ enum bft_errors bft_step(Bft* bft, bool* got_trigger, count_t* xs)
 	}
 	*got_trigger = triggered_detectors > DETECTORS_NUMBER / 2;
 	return err == PFS_NO_ERRORS ? BFT_NO_ERRORS
-								: BFT_ERROR_INVALID_BACKGROUND;
+								: BFT_ERROR_INVALID_INPUT;
 }
 
 /**
@@ -214,7 +214,7 @@ enum bft_errors bft_interface(struct bft_changepoints* cps,
 	// inititalization can fail either because of wrong inputs,
 	// or because failed allocation for curve stack.
 	// we return error code, setting the changepoint to (0.0, 0, 0)
-	enum bft_errors err;
+	enum bft_errors err = BFT_NO_ERRORS;
 	Bft* bft = bft_init(&err, threshold_std, mu_min, alpha, m, sleep);
 
 	if (err == BFT_ERROR_INVALID_ALLOCATION ||
@@ -232,7 +232,7 @@ enum bft_errors bft_interface(struct bft_changepoints* cps,
 		count_t xs[4] = { xs0[t], xs1[t], xs2[t], xs3[t] };
 		err = bft_step(bft, &got_trigger, xs);
 
-		if (err == BFT_ERROR_INVALID_BACKGROUND)
+		if (err == BFT_ERROR_INVALID_INPUT)
 		{
 			// the focus_step fails if it is provided with a non-positive background.
 			// if this happens at iteration `t` for any of the detectors,
@@ -255,5 +255,5 @@ enum bft_errors bft_interface(struct bft_changepoints* cps,
 
 	*cps = bft_changes2changepoints(bft_get_changes(bft), t == len ? t - 1 : t);
 	bft_terminate(bft);
-	return BFT_NO_ERRORS;
+	return err;
 }

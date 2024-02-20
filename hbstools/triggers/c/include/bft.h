@@ -10,7 +10,6 @@
 enum bft_errors
 {
 	BFT_NO_ERRORS = 0,
-	BFT_ERROR_INVALID_BACKGROUND,
 	BFT_ERROR_INVALID_ALLOCATION,
 	BFT_ERROR_INVALID_INPUT
 };
@@ -28,9 +27,6 @@ struct bft_changes
 };
 
 Bft* bft_init(enum bft_errors* err, double threshold_std, double mu_min,
-	double alpha, int m, int sleep);
-
-enum bft_errors bft_check_inputs(double threshold_std, double mu_min,
 	double alpha, int m, int sleep);
 
 void bft_terminate(Bft* bft);
@@ -58,5 +54,8 @@ enum bft_errors bft_interface(struct bft_changepoints* cps,
  */
 
 void bft_print(Bft* bft, size_t t, count_t* xs);
+
+enum bft_errors bft_check_init_parameters(double threshold_std, double mu_min,
+	double alpha, int m, int sleep);
 
 #endif //BFT_H

@@ -5,14 +5,15 @@ py.install_sources(
     'poissonfocusdes.py',
     'cpoissonfocusses.py',
   ],
-  subdir: 'hbstools/triggers'
+  subdir: 'hbstools' / 'triggers'
 )
 
-incdir = include_directories('c/include')
-sources = ['c/poissonfocus.c', 'c/poissonfocusses.c', 'c/bft.c']
-shared_library('c_pfocus',
+incdir = include_directories('c' / 'include')
+sources = ['c' / 'poissonfocus.c', 'c' / 'poissonfocusses.c', 'c' / 'bft.c']
+shared_library('lib-pfocus',
     sources,
     include_directories : incdir,
     install: true,
-    install_dir: py.get_install_dir() / 'hbstools/triggers/.sharedlibs'
+    name_prefix: '',
+    install_dir: py.get_install_dir() / 'hbstools' / 'triggers' / '.sharedlibs'
 )
