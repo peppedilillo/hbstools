@@ -60,7 +60,7 @@ class PoissonFocus:
         self.curve_list.append(Curve(inf, 0.0, 0, 0.0))
         self.curve_list.append(Curve(0, 0.0, 0, 0.0))
 
-    def run(
+    def __call__(
         self,
         xs: list[int],
         bs: list[float],

@@ -1,0 +1,111 @@
+import codecs
+import ctypes
+import enum
+from typing import Callable
+
+import numpy as np
+import numpy.typing as npt
+
+from hbstools.triggers import _LIBCFOCUS
+from hbstools.types import Changepoint
+
+clib_bft = ctypes.CDLL(_LIBCFOCUS)
+
+NUMDETECTOR = 4
+
+
+class _Errors(enum.IntEnum):
+    """Errors returned by the C implementation."""
+    NO_ERRORS = 0
+    INVALID_ALLOCATION = 1
+    INVALID_INPUT = 2
+
+
+class _Changepoint(ctypes.Structure):
+    """This is a wrapper to C definition of a changepoint."""
+    _fields_ = [
+        ("significance_std", ctypes.c_double),
+        ("changepoint", ctypes.c_size_t),
+        ("triggertime", ctypes.c_size_t),
+    ]
+
+
+class _Changepoints(ctypes.Structure):
+    """Hosts four changepoints, one per detectors"""
+    _fields_ = [
+        ("changepoints", _Changepoint * NUMDETECTOR)
+    ]
+
+
+class Bft_C:
+    """A wrapper to the C implementation of the BFT."""
+    def __init__(
+            self,
+            threshold_std: float,
+            mu_min: float,
+            alpha: float,
+            beta, # TODO: remove when adding dispatcher
+            t_max,
+            m: int,
+            sleep: int,
+    ):
+        self.threshold_std = threshold_std
+        self.mu_min = mu_min
+        self.alpha = alpha
+        self.m = m
+        self.sleep = sleep
+        self._call = self.bind()
+
+    def __call__(
+            self,
+            xs0: np.NDArray[np.int_],
+            xs1: np.NDArray[np.int_],
+            xs2: np.NDArray[np.int_],
+            xs3: np.NDArray[np.int_],
+    ) -> Changepoint:
+        cs = _Changepoints()
+        xs_length = len(xs0)
+        assert len(xs0) == len(xs1) == len(xs2) == len(xs3)
+        error_code = self._call(
+            ctypes.byref(cs),
+            xs0.ctypes.data_as(ctypes.POINTER(ctypes.c_long)),
+            xs1.ctypes.data_as(ctypes.POINTER(ctypes.c_long)),
+            xs2.ctypes.data_as(ctypes.POINTER(ctypes.c_long)),
+            xs3.ctypes.data_as(ctypes.POINTER(ctypes.c_long)),
+            xs_length,
+            self.threshold_std,
+            self.mu_min,
+            self.alpha,
+            self.m,
+            self.sleep
+        )
+
+        match error_code:
+            case _Errors.INVALID_INPUT:
+                raise ValueError("The inputs contain invalid entries.")
+            case _Errors.INVALID_ALLOCATION:
+                raise BufferError("Can't allocate memory for the algorithm.")
+
+        significance_std = max([c.significance_std for c in cs.changepoints])
+        changepoint = min([c.changepoint for c in cs.changepoints])
+        triggertime = max([c.triggertime for c in cs.changepoints])
+        return significance_std, changepoint, triggertime
+
+    @staticmethod
+    def bind() -> Callable:
+        bft_interface = clib_bft.bft_interface
+        bft_interface.restype = _Errors
+        bft_interface.argtypes = [
+            ctypes.POINTER(_Changepoints),
+            ctypes.POINTER(ctypes.c_long),
+            ctypes.POINTER(ctypes.c_long),
+            ctypes.POINTER(ctypes.c_long),
+            ctypes.POINTER(ctypes.c_long),
+            ctypes.c_size_t,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_int,
+            ctypes.c_int
+        ]
+        return bft_interface

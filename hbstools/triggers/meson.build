@@ -3,7 +3,7 @@ py.install_sources(
     '__init__.py',
     'poissonfocus.py',
     'poissonfocusdes.py',
-    'cpoissonfocusses.py',
+    'poissonfocusses_cwrap.py',
   ],
   subdir: 'hbstools' / 'triggers'
 )

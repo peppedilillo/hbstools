@@ -86,8 +86,8 @@ algorithm_params:
  # Must be greater than 1.
  mu_min: 1.1
  
- # The `alpha` keyword sets the background smoothing characteristic time  	au,
- # 	au = (binning/0.005).
+ # The `alpha` keyword sets the background smoothing characteristic time tau,
+ # > tau = (binning/0.005).
  # Must be greater than 0.
  alpha: 0.005
 

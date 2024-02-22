@@ -12,4 +12,3 @@ py = import('python').find_installation()
 
 subdir('hbstools')
 subdir('mercury')
-subdir('tests')

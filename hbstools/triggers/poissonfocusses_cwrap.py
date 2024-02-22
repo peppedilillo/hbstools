@@ -5,27 +5,10 @@ from typing import Callable
 import numpy as np
 import numpy.typing as npt
 
+from hbstools.triggers import _LIBCFOCUS
+from hbstools.types import Changepoint
 
-def library_path(libname: str) -> str:
-    """Gets the path to the library, findind the appropriate extension based on
-     OS. The lib is installed in `lib/pythonX.XX/site-packages/.sharedlibs`.
-     Assumes this script to be installed at `lib/pythonX.XX/site-packages`"""
-    from pathlib import Path
-    import sys
-
-    if sys.platform.startswith('win32'):
-        suffix = ".dll"
-    elif sys.platform.startswith('linux'):
-        suffix = ".so"
-    elif sys.platform.startswith('darwin'):
-        suffix = ".dylib"
-    else:
-        raise OSError("System not supported")
-
-    return str(Path(__file__).parent / f"{libname}{suffix}")
-
-
-clib_pfs = ctypes.CDLL(library_path(".sharedlibs/lib-pfocus"))
+clib_pfs = ctypes.CDLL(_LIBCFOCUS)
 
 
 class _Errors(enum.IntEnum):
@@ -44,7 +27,7 @@ class _Changepoint(ctypes.Structure):
     ]
 
 
-class PoissonFocusSES:
+class PoissonFocusSES_C:
     """A wrapper to the C implementation of FOCuS with simple exp. smoothing."""
     def __init__(
             self,
@@ -54,7 +37,7 @@ class PoissonFocusSES:
             beta,  # TODO: remove this when adding dispatcher
             t_max,  # TODO: same as above
             m: int,
-            sleep: int
+            sleep: int,
     ):
         self.threshold_std = threshold_std
         self.mu_min = mu_min
@@ -63,7 +46,7 @@ class PoissonFocusSES:
         self.sleep = sleep
         self._call = self.bind()
 
-    def run(self, xs: npt.NDArray[np.int_]) -> tuple[float, int, int]:
+    def __call__(self, xs: npt.NDArray[np.int_]) -> Changepoint:
         c = _Changepoint()
         xs_length = len(xs)
         xs_pointer = xs.ctypes.data_as(ctypes.POINTER(ctypes.c_long))

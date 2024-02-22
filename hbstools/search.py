@@ -7,8 +7,9 @@ from rich.console import Console
 from rich.progress import track
 
 from hbstools.data import get_data
-from hbstools.io import get_gtis
-from hbstools.triggers import PoissonFocusSES
+from hbstools.data import histogram
+from hbstools.data import filter_energy
+from hbstools.io import read_gti_files
 from hbstools.types import Changepoint
 from hbstools.types import ChangepointMET
 from hbstools.types import GTI
@@ -29,16 +30,16 @@ class Search:
     """Base search class."""
 
     def __init__(
-        self,
-        binning: float,
-        skip: int,
-        energy_lims: tuple[float, float],
-        algorithm_params: dict,
-        console: Console | None = None,
+            self,
+            binning: float,
+            skip: int,
+            energy_lims: tuple[float, float],
+            algorithm_params: dict,
+            console: Console | None = None,
     ):
         self.binning = binning
         self.skip = skip
-        self.enlims = energy_lims
+        self.energy_lims = energy_lims
         self.algorithm_params = algorithm_params
         self.algorithm = PoissonFocusSES
         self.console = console
@@ -46,34 +47,9 @@ class Search:
     def __call__(self, dataset: Sequence[Path | str]) -> pd.DataFrame:
         return self.make_ttis(self.run_on_dataset(dataset))
 
-    @staticmethod
-    def make_bins(
-        start: float,
-        stop: float,
-        step: float,
-    ) -> np.ndarray:
-        """Return bins including last one, which contains stop."""
-        num_intervals = int((stop - start) / step + 1)
-        return np.linspace(start, start + num_intervals * step, num_intervals + 1)
-
-    def filter_data(
-        self,
-        data: pd.DataFrame,
-    ):
-        """Filters data in an energy band."""
-        low, hi = self.enlims
-        return data[(data["ENERGY"] >= low) & (data["ENERGY"] < hi)]
-
-    def bin_data(
-        self, data: pd.DataFrame, gti: GTI, binning: float
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Bins data in time."""
-        bins = self.make_bins(gti.start, gti.end, binning)
-        return np.histogram(data["TIME"], bins=bins)
-
     def run(
-        self,
-        xs: Sequence[int],
+            self,
+            xs: Sequence[int],
     ) -> Changepoint:
         """Run the algorithm one step a time."""
         # resets the algorithm at each call
@@ -81,25 +57,26 @@ class Search:
         return changepoint
 
     def run_on_segment(
-        self,
-        counts: np.ndarray,
-        bins: np.ndarray,
+            self,
+            counts: np.ndarray,
+            bins: np.ndarray,
     ) -> list[Changepoint]:
         """Runs on binned data restarting the algorithm after sleep."""
 
         def f(cs, bs, skip, acc):
+            """Recursion helper"""
             if not len(cs):
                 return []
             s, cp, tt = self.run(cs)
             # if ended with no trigger algorithm returns 0, len(xs) + 1, len(xs)
             t = [(s, acc + cp, acc + tt)] if tt >= cp else []
-            return t + f(cs[tt + skip :], bs[tt + skip :], skip, acc + tt + skip)
+            return t + f(cs[tt + skip:], bs[tt + skip:], skip, acc + tt + skip)
 
         return f(counts, bins, self.skip, 0)
 
     def run_on_dataset(
-        self,
-        dataset: Sequence[Path | str],
+            self,
+            dataset: Sequence[Path | str],
     ) -> dict[GTI, list[ChangepointMET]]:
         """Runs on every gtis and returns anomalies."""
 
@@ -111,21 +88,21 @@ class Search:
         def progressbar(gen: Iterator):
             return track(
                 gen,
-                description="[dim cyan]\[$Running]",
+                description="[dim cyan](Running..)",
                 transient=True,
                 console=self.console,
             )
 
         results = {}
-        sorted_folders = sorted(dataset, key=lambda d: get_gtis(d)[0].start)
+        sorted_folders = sorted(dataset, key=lambda d: read_gti_files(d)[0].start)
         _get_data = (
             progressbar(get_data(sorted_folders))
             if self.console
             else get_data(sorted_folders)
         )
         for data, gti in _get_data:
-            data = self.filter_data(data)
-            counts, bins = self.bin_data(data, gti, self.binning)
+            data = filter_energy(self.energy_lims, data)
+            counts, bins = histogram(data, gti, self.binning)
             anomalies = self.run_on_segment(counts, bins)
             results[gti] = map_bins_to_times(anomalies, bins)
 
@@ -135,15 +112,16 @@ class Search:
                 if anomalies:
                     self.console.log(f"Found [b]{len(anomalies)}[/] transient{'s' if len(anomalies) > 1 else ''}")
                     for i, r in enumerate(results[gti], start=1):
-                        self.console.log(f"[dim]MET time {r[2]:.1f}, GTI+{r[2] - gti.start:.1f}s-{r[2] - gti.start:.1f}s.[/]")
+                        self.console.log(
+                            f"[dim]MET time {r[2]:.1f}, GTI+{r[2] - gti.start:.1f}s-{r[2] - gti.start:.1f}s.[/]")
             # fmt: on
         return results
 
     def compute_bkg_pre(
-        self,
-        trigtime: MET,
-        changepoint: MET,
-        gti: GTI,
+            self,
+            trigtime: MET,
+            changepoint: MET,
+            gti: GTI,
     ) -> tuple[float, float]:
         """Times from changepoint of an interval ending `m` steps behind the triggertime,
         with duration binning / alpha."""
@@ -160,10 +138,10 @@ class Search:
         return start, end
 
     def compute_bkg_post(
-        self,
-        trigtime: MET,
-        changepoint: MET,
-        gti: GTI,
+            self,
+            trigtime: MET,
+            changepoint: MET,
+            gti: GTI,
     ) -> tuple[float, float]:
         """Times from changepoint of an interval starting after skip steps from triggertime,
         with duration binning / alpha."""
@@ -180,9 +158,9 @@ class Search:
         return start, end
 
     def format_result(
-        self,
-        result: ChangepointMET,
-        gti: GTI,
+            self,
+            result: ChangepointMET,
+            gti: GTI,
     ) -> TTI:
         """Transforms focus results (times expressed as mets) into events formatted like:
         (bkg_pres_start, bkg_pre_ends, event_starts, event_ends, bkg_post_start, bkg_post_end)
@@ -195,8 +173,8 @@ class Search:
         return *bkg_pre, *event_interval, bkg_post_start, bkg_post_end
 
     def make_ttis(
-        self,
-        results: dict[GTI, list[ChangepointMET]],
+            self,
+            results: dict[GTI, list[ChangepointMET]],
     ) -> pd.DataFrame:
         """Puts ttis into a dataframe"""
         formatted_results = []

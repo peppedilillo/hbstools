@@ -3,9 +3,10 @@ from pathlib import Path
 from typing import Iterator, Sequence
 
 import pandas as pd
+import numpy as np
 
-from hbstools.io import get_gtis
-from hbstools.io import get_merged_data
+from hbstools.io import read_gti_files
+from hbstools.io import read_event_files
 from hbstools.types import GTI
 
 
@@ -14,6 +15,7 @@ def merge_overlapping_gtis(gtis: list[GTI], tolerance: float = 1.0) -> list[tupl
     F([(1, 2), (3, 4), (4, 5)]) = [(1, 2), (3, 5)]"""
 
     def overlap(x: GTI, y: GTI, abs_tol: float):
+        """`x` overlaps `y` if `x` starts before or at the end of `y` """
         assert x.start < y.end
         return isclose(x.end, y.start, abs_tol=abs_tol) or (y.start < x.end)
 
@@ -58,11 +60,54 @@ def get_data(data_folders: Sequence[Path | str]) -> Iterator[tuple[pd.DataFrame,
                 yield after(df, gti.start), gti
                 return
             new_file, *_ = files
-            yield from f(gtis, files[1:], concatenate(df, get_merged_data(new_file)))
+            yield from f(gtis, files[1:], concatenate(df, read_event_files(new_file)))
         else:
             yield between(df, gti.start, gti.end), gti
             yield from f(gtis[1:], files, after(df, gti.end))
 
-    all_gtis = [gti for gtis in [get_gtis(dp) for dp in data_folders] for gti in gtis]
+    all_gtis = [gti for gtis in [read_gti_files(dp) for dp in data_folders] for gti in gtis]
     gtis = merge_overlapping_gtis(all_gtis)
-    return f(gtis, data_folders[1:], get_merged_data(data_folders[0]))
+    return f(gtis, data_folders[1:], read_event_files(data_folders[0]))
+
+
+def make_bins(
+    start: float,
+    stop: float,
+    step: float,
+) -> np.ndarray:
+    """Return bins including last one, which contains stop."""
+    num_intervals = int((stop - start) / step + 1)
+    return np.linspace(start, start + num_intervals * step, num_intervals + 1)
+
+
+def filter_energy(
+    energy_lims: tuple[float, float],
+    data: pd.DataFrame,
+):
+    """Filters data in an energy band."""
+    low, hi = energy_lims
+    return data[(data["ENERGY"] >= low) & (data["ENERGY"] < hi)]
+
+
+def histogram(
+    data: pd.DataFrame,
+    gti: GTI,
+    binning: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Bins data in time."""
+    bins = make_bins(gti.start, gti.end, binning)
+    counts, _ = np.histogram(data["TIME"], bins=bins)
+    return counts, bins
+
+
+def histogram_quadrants(
+    data: pd.DataFrame,
+    gti: GTI,
+    binning: float,
+) -> tuple[dict, np.ndarray]:
+    """Bins data in time, separating data from different quadrants."""
+    bins = make_bins(gti.start, gti.end, binning)
+    return {
+        quadid: histogram(quadrant_data, gti, binning)[0]
+        for quadid, quadrant_data in data.groupby("QUADID")
+    }, bins

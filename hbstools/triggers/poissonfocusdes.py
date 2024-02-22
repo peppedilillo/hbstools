@@ -75,7 +75,7 @@ class PoissonFocusDES:
         self.b_0 = b_0
         self.schedule = "collect"
 
-    def run(
+    def __call__(
         self,
         xs: Sequence[int],
     ):
