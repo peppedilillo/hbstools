@@ -14,7 +14,7 @@ configuration = {
     "binning": 1,
     "skip": 10,
     "energy_lims": (None, None),
-    "trigger_params": {
+    "algorithm_params": {
         "alpha": 0.1,
         "m": 5,
     },
