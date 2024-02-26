@@ -7,10 +7,14 @@ from collections import deque
 from math import sqrt
 from typing import Deque, Sequence
 
-from hbstools.triggers import PoissonFocus
+from hbstools.triggers.poissonfocus import PoissonFocus
 
 
-class PoissonFocusDES:
+class PoissonFocusDes:
+    """
+    A wrapper to Poisson-FOCuS implementing background estimate via double
+    exponential smoothing.
+    """
     def __init__(
         self,
         threshold_std: float,
@@ -41,20 +45,7 @@ class PoissonFocusDES:
             b_0: DES init slope parameter. must be greater or equal than 0.
             defaults to 0.
         """
-        if alpha < 0.0:
-            raise ValueError("alpha must be non-negative.")
-        if beta < 0.0:
-            raise ValueError("beta must be non-negative.")
-        if m < 1:
-            raise ValueError("m must be a positive integer.")
-        if sleep < 0:
-            raise ValueError("sleep must be a non-negative integer.")
-        if (t_max is not None) and (t_max < 1):
-            raise ValueError("t_max must be a positive integer..")
-        if (s_0 is not None) and (s_0 < 0):
-            raise ValueError("s_0 must be non negative.")
-        if (b_0 is not None) and (b_0 < 0):
-            raise ValueError("b_0 must be non negative.")
+        self.check_init_parameters(threshold_std, alpha, beta, m, sleep, mu_min, t_max, s_0, b_0,)
 
         self.focus_params = {
             "mu_min": mu_min,
@@ -97,7 +88,28 @@ class PoissonFocusDES:
                 return significance, t - offset + 1, t
         return 0.0, t + 1, t
 
+    @staticmethod
+    def check_init_parameters(threshold_std, alpha, beta, m, sleep, mu_min, t_max, s_0, b_0,):
+        """Checks validity of initialization arguments."""
+        PoissonFocus.check_init_parameters(threshold_std, mu_min)
+        if alpha < 0.0:
+            raise ValueError("alpha must be non-negative.")
+        if beta < 0.0:
+            raise ValueError("beta must be non-negative.")
+        if m < 1:
+            raise ValueError("m must be a positive integer.")
+        if sleep < 0:
+            raise ValueError("sleep must be a non-negative integer.")
+        if (t_max is not None) and (t_max < 1):
+            raise ValueError("t_max must be a positive integer..")
+        if (s_0 is not None) and (s_0 < 0):
+            raise ValueError("s_0 must be non negative.")
+        if (b_0 is not None) and (b_0 < 0):
+            raise ValueError("b_0 must be non negative.")
+        return
+
     def des_initialize(self):
+        """Initialize background estimate."""
         if self.s_0 is None:
             assert len(self.buffer) == self.m
             counts_sum = sum(self.buffer)
@@ -113,6 +125,7 @@ class PoissonFocusDES:
         return
 
     def des_update(self, x):
+        """Updates background estimate."""
         s_t_1 = self.s_t
         b_t_1 = self.b_t
         self.s_t = self.alpha * x + (1 - self.alpha) * (s_t_1 + b_t_1)
@@ -131,6 +144,7 @@ class PoissonFocusDES:
         return 0.0, 0
 
     def step(self, x):
+        """Base algorithm step."""
         if self.schedule == "test":
             x_t_m = self.buffer.popleft()
             self.lambda_t = self.des_update(x_t_m)
@@ -161,6 +175,7 @@ class PoissonFocusDES:
 
 
 class Debugger:
+    """A debugging wrapper to PoissonFocusDES."""
     def __init__(self, **kwargs):
         self.init_parameters = kwargs
         self.log = {
@@ -183,7 +198,7 @@ class Debugger:
         Raises:
             ValueError: if zero background is passed to the update function.
         """
-        focus_des = PoissonFocusDES(**self.init_parameters)
+        focus_des = PoissonFocusDes(**self.init_parameters)
         t = 0
         for t, x_t in enumerate(xs):
             significance, offset = focus_des.step(x_t)
@@ -192,11 +207,13 @@ class Debugger:
                 return significance, t - offset + 1, t
         return 0.0, t + 1, t
 
-    def log_step(self, bin_, t, x_t, b_t):
+    def log_step(self, bin_: float, t: int, x_t: int, b_t: float):
+        """Logs algorithm step."""
         self.log["timestamps"].append(bin_)
         self.log["ts"].append(t)
         self.log["xs"].append(x_t)
         self.log["bs"].append(b_t)
 
-    def get_log(self):
+    def get_log(self) -> dict:
+        """Returns a log"""
         return self.log

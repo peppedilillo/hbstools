@@ -52,7 +52,6 @@ From terminal run:
 If you are using poetry for other projects refer to [this link](https://python-poetry.org/docs/managing-environments/#deleting-the-environments) instead.
 The latter step is only required if you installed with Anaconda.
 
-
 # Mercury
 ![mercury](assets/mercury-gif/mercury.gif)
 
@@ -96,3 +95,19 @@ Download the archive and unzip it then, from terminal:
 
 This supposing you installed `hbstools` with Anaconda. 
 If you didn't, activate your local environment instead.
+
+## Trigger algorithms
+
+|               | Python PF+DES | Python BFT | C PF+SES | C BFT |
+|---------------|---------------|------------|----------|-------|
+| binning       |       ✓       |      ✓     |     ✓    |   ✓   |
+| energy_lims   |       ✓       |      ✓     |     ✓    |   ✓   |
+| skip          |       ✓       |      ✓     |     ✓    |   ✓   |
+| threshold_std |       ✓       |      ✓     |     ✓    |   ✓   |
+| mu_min        |       ✓       |      ✓     |     ✓    |   ✓   |
+| alpha         |       ✓       |      ✓     |     ✓    |   ✓   |
+| beta          |       ✓       |      ✓     |          |       |
+| m             |       ✓       |      ✓     |     ✓    |   ✓   |
+| t_max         |       ✓       |      ✓     |     *    |   *   |
+| sleep         |       ✓       |      ✓     |     ✓    |   ✓   |
+| majority      |               |      ✓     |          |   ✓   |

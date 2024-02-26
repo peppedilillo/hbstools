@@ -41,9 +41,9 @@ def read_event_files(data_folder: str | Path) -> pd.DataFrame:
         category_quads_t = CategoricalDtype(categories=[0,1,2,3], ordered=True)
         return (
             pd.concat([xdata_df, sdata_df])
-            .reset_index(drop=True)
             .sort_values(by=["TIME"])
             .astype({'QUADID': category_quads_t})
+            .reset_index(drop=True)
         )
 
     return _read_event_files(path_xdata(data_folder), path_sdata(data_folder))

@@ -12,6 +12,7 @@ struct bft
 	double alpha;
 	int m;
 	int sleep;
+	int majority;
 	PoissonFocusSES* fs[DETECTORS_NUMBER];
 };
 
@@ -20,15 +21,19 @@ struct bft
  * Returns an error if the arguments are invalid.
  */
 enum bft_errors bft_check_init_parameters(double threshold_std, double mu_min,
-	double alpha, int m, int sleep)
+	double alpha, int m, int sleep, int majority)
 {
+	// @formatter:off
 	if (
 		pfs_check_init_parameters(
 			threshold_std, mu_min,
 			alpha, m, sleep)
-		== PFS_ERROR_INVALID_INPUT
+		== PFS_ERROR_INVALID_INPUT ||
+		              majority < 1 ||
+					  majority > DETECTORS_NUMBER
 		)
 		return BFT_ERROR_INVALID_INPUT;
+	// @formatter:on
 	return BFT_NO_ERRORS;
 }
 
@@ -39,13 +44,14 @@ enum bft_errors bft_check_init_parameters(double threshold_std, double mu_min,
  */
 static struct bft* init_helper(struct bft* bft, PoissonFocusSES** fs,
 	double threshold_std, double mu_min,
-	double alpha, int m, int sleep)
+	double alpha, int m, int sleep, int majority)
 {
 	bft->threshold_std = threshold_std;
 	bft->mu_min = mu_min;
 	bft->alpha = alpha;
 	bft->m = m;
 	bft->sleep = sleep;
+	bft->majority = majority;
 	for (int i = 0; i < DETECTORS_NUMBER; i++)
 		bft->fs[i] = fs[i];
 	return bft;
@@ -58,9 +64,9 @@ static struct bft* init_helper(struct bft* bft, PoissonFocusSES** fs,
  * Wraps init_helper.
  */
 struct bft* bft_init(enum bft_errors* e, double threshold_std, double mu_min,
-	double alpha, int m, int sleep)
+	double alpha, int m, int sleep, int majority)
 {
-	if (bft_check_init_parameters(threshold_std, mu_min, alpha, m, sleep))
+	if (bft_check_init_parameters(threshold_std, mu_min, alpha, m, sleep, majority))
 	{
 		*e = BFT_ERROR_INVALID_INPUT;
 		return NULL;
@@ -90,7 +96,7 @@ struct bft* bft_init(enum bft_errors* e, double threshold_std, double mu_min,
 	}
 
 	*e = BFT_NO_ERRORS;
-	return init_helper(bft, fs, threshold_std, mu_min, alpha, m, sleep);
+	return init_helper(bft, fs, threshold_std, mu_min, alpha, m, sleep, majority);
 }
 
 /**
@@ -125,7 +131,7 @@ enum bft_errors bft_step(Bft* bft, bool* got_trigger, count_t* xs)
 		err = err || pfs_step(bft->fs[i], &focusdes_triggered, xs[i]);
 		if (focusdes_triggered) triggered_detectors++;
 	}
-	*got_trigger = triggered_detectors > DETECTORS_NUMBER / 2;
+	*got_trigger = triggered_detectors >= bft->majority;
 	return err == PFS_NO_ERRORS ? BFT_NO_ERRORS
 								: BFT_ERROR_INVALID_INPUT;
 }
@@ -146,22 +152,6 @@ struct bft_changes bft_get_changes(Bft* bft)
 	for (int i = 0; i < DETECTORS_NUMBER; i++)
 		r.changes[i] = pfs_get_change(bft->fs[i]);
 	return r;
-}
-
-/**
- * Prints log strings likes:
- * t = 160, x = 0, b = 0.86, max = 0.00, toff = 0, curves:
- * t = 160, x = 2, b = 0.97, max = 0.00, toff = 0, curves: (2, -0.97, -1, 0.00)
- * t = 160, x = 1, b = 1.20, max = 0.00, toff = 0, curves:
- * t = 160, x = 2, b = 1.09, max = 0.00, toff = 0, curves: (2, -1.09, -1, 0.00)
- * Note that curves offset and time members are negative for compatibility
- * with previous implementations. the `b` and `t` members of a curve are
- * defined positive in this implementation.
- */
-void bft_print(Bft* bft, size_t t, count_t* xs)
-{
-	for (int i = 0; i < DETECTORS_NUMBER; i++)
-		pfs_print(bft->fs[i], t, xs[i]);
 }
 
 /**
@@ -191,10 +181,8 @@ struct bft_changepoints bft_changes2changepoints(struct bft_changes c, size_t t)
  * It supposes we are dealing with four detectors (DETECTORS_NUMBER == 4).
  *
  * @param cps : a pointer, here we will store the results
- * @param xs0 : an array of counts from detector 0 with length len.
- * @param xs1 : an array of counts from detector 1 with length len.
- * @param xs2 : an array of counts from detector 2 with length len.
- * @param xs3 : an array of counts from detector 3 with length len.
+ * @param xss : an array of counts with shape (DETECTOR_NUMBER, len).
+ * (t-th count, from detector i-th, is accessed with xss[i * len + t]).
  * @param len : length of input array.
  * @param threshold_std : threshold value in standard deviations
  * @param mu_min : will keep memory usage low and constant at cost of losing
@@ -203,19 +191,21 @@ struct bft_changepoints bft_changes2changepoints(struct bft_changes c, size_t t)
  * @param m : only counts gathered up to m time-steps in the past are used
  * for assessing background
  * @param sleep : testing for anomalies starts only after `sleep + m` time-steps.
+ * @param majority : the number of detectors simultaneously over threshold should
+ * be equal or greater than this number for a trigger to pass through.
  * @return : an error code.
  */
 enum bft_errors bft_interface(struct bft_changepoints* cps,
-	count_t* xs0, count_t* xs1, count_t* xs2, count_t* xs3, size_t len,
+	count_t* xss, size_t len,
 	double threshold_std, double mu_min,
-	double alpha, int m, int sleep)
+	double alpha, int m, int sleep,
+	int majority)
 {
-
 	// inititalization can fail either because of wrong inputs,
 	// or because failed allocation for curve stack.
 	// we return error code, setting the changepoint to (0.0, 0, 0)
 	enum bft_errors err = BFT_NO_ERRORS;
-	Bft* bft = bft_init(&err, threshold_std, mu_min, alpha, m, sleep);
+	Bft* bft = bft_init(&err, threshold_std, mu_min, alpha, m, sleep, majority);
 
 	if (err == BFT_ERROR_INVALID_ALLOCATION ||
 		err == BFT_ERROR_INVALID_INPUT)
@@ -229,8 +219,10 @@ enum bft_errors bft_interface(struct bft_changepoints* cps,
 	size_t t;
 	for (t = 0; t < len; t++)
 	{
-		count_t xs[4] = { xs0[t], xs1[t], xs2[t], xs3[t] };
-		err = bft_step(bft, &got_trigger, xs);
+		count_t xs[DETECTORS_NUMBER];
+        size_t i; for (i = 0; i < DETECTORS_NUMBER; i++) xs[i] = xss[i * len + t];
+
+        err = bft_step(bft, &got_trigger, xs);
 
 		if (err == BFT_ERROR_INVALID_INPUT)
 		{

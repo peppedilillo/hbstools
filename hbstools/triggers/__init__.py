@@ -1,8 +1,3 @@
-from hbstools.triggers.poissonfocus import PoissonFocus
-from hbstools.triggers.poissonfocusdes import PoissonFocusDES
-from hbstools.triggers.poissonfocusses_cwrap import PoissonFocusSES
-
-
 def _library_path(libname: str) -> str:
     """Gets the path to the C shared library, with appropriate extension.
     Assumes the library and this file to be installed in the same directory"""

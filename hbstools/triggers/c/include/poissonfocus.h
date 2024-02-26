@@ -33,7 +33,7 @@ PoissonFocus* pf_init(enum pf_errors* err, double threshold_std, double mu_min);
 
 void pf_terminate(PoissonFocus* f);
 
-enum pf_errors pf_step(PoissonFocus* f, bool* t, count_t x, double b);
+enum pf_errors pf_step(PoissonFocus* f, bool* trigflag, count_t x, double b);
 
 struct pf_change pf_get_change(PoissonFocus* f);
 
@@ -58,8 +58,6 @@ pf_interface(struct pf_changepoint* cp, count_t* xs, double* bs, size_t len,
 
 struct pf_changepoint
 pf_change2changepoint(struct pf_change c, size_t t);
-
-void pf_print(PoissonFocus* f, size_t t, count_t x_t, double b_t);
 
 enum pf_errors pf_check_init_parameters(double threshold_std, double mu_min);
 

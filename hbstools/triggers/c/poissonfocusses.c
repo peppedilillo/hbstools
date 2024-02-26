@@ -316,7 +316,9 @@ static inline void step_update(struct pfs* f, count_t x_t)
  */
 enum pfs_errors pfs_step(PoissonFocusSES* f, bool* trigflag, count_t x_t)
 {
-	switch (f->status.code)
+    *trigflag = false;
+
+    switch (f->status.code)
 	{
 	case TEST:
 	{
@@ -376,14 +378,6 @@ struct pf_change pfs_get_change(struct pfs* f)
 	if (c.offset < f->m)
 		return c;
 	return (struct pf_change){ 0 };
-}
-
-/**
- * Logs time-step, most recent count, background estimate and curve lists.
- */
-void pfs_print(struct pfs* f, size_t t, count_t x_t)
-{
-	pf_print(f->focus, t, x_t, f->lambda_t);
 }
 
 /**

@@ -9,6 +9,7 @@ from math import sqrt
 
 
 class Curve:
+    """A Poisson-FOCuS curve supporting maximizer optimization."""
     def __init__(self, x: float, b: float, t: int, m: float):
         self.x = x
         self.b = b
@@ -17,6 +18,7 @@ class Curve:
 
 
 def ymax(curve, acc):
+    """Maximum of a curve, supporting accumulator optimization."""
     x = acc.x - curve.x
     b = acc.b - curve.b
     assert x > b
@@ -47,11 +49,7 @@ class PoissonFocus:
             threshold_std: threshold value in standard deviations.
             mu_min: mumin value.
         """
-        if mu_min < 1:
-            raise ValueError("mumin must be greater or equal 1.0")
-        if threshold_std <= 0:
-            raise ValueError("threshold must be greater than 0.")
-
+        self.check_init_parameters(threshold_std, mu_min)
         self.ab_crit = 1 if mu_min == 1 else (mu_min - 1) / log(mu_min)
         self.threshold_llr = threshold_std**2 / 2
         self.global_max = 0.0
@@ -86,7 +84,17 @@ class PoissonFocus:
                 return sqrt(2 * self.global_max), -self.time_offset + t + 1, t
         return 0.0, t + 1, t
 
+    @staticmethod
+    def check_init_parameters(threshold_std, mu_min):
+        """Checks validity of initialization arguments."""
+        if mu_min < 1:
+            raise ValueError("mumin must be greater or equal 1.0")
+        if threshold_std <= 0:
+            raise ValueError("threshold must be greater than 0.")
+        return
+
     def update(self, x, b):
+        """Poisson-FOCuS update step."""
         self.global_max = 0.0
         self.time_offset = 0
 
@@ -106,6 +114,7 @@ class PoissonFocus:
         return
 
     def maximize(self, p, acc):
+        """Poisson-FOCuS maximization step."""
         m = acc.m - p.m
         i = len(self.curve_list)
         while m + p.m >= self.threshold_llr:

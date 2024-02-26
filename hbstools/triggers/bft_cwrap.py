@@ -1,10 +1,12 @@
-import codecs
+"""
+Ctypes binding to the header of the BFT C implementation.
+"""
+
 import ctypes
 import enum
-from typing import Callable
+from typing import Callable, Sequence
 
 import numpy as np
-import numpy.typing as npt
 
 from hbstools.triggers import _LIBCFOCUS
 from hbstools.types import Changepoint
@@ -37,47 +39,45 @@ class _Changepoints(ctypes.Structure):
     ]
 
 
-class Bft_C:
+class BftCWrapper:
     """A wrapper to the C implementation of the BFT."""
+    NDPOINTER = np.ctypeslib.ndpointer(dtype=ctypes.c_long, ndim=2, flags="C")
+
     def __init__(
             self,
             threshold_std: float,
             mu_min: float,
             alpha: float,
-            beta, # TODO: remove when adding dispatcher
-            t_max,
             m: int,
             sleep: int,
+            majority: int,
     ):
+        self.check_init_parameters(threshold_std, mu_min, alpha, m, sleep, majority)
         self.threshold_std = threshold_std
         self.mu_min = mu_min
         self.alpha = alpha
         self.m = m
         self.sleep = sleep
-        self._call = self.bind()
+        self.majority = majority
+        self._call = self.bind_bft_interface()
 
     def __call__(
             self,
-            xs0: np.NDArray[np.int_],
-            xs1: np.NDArray[np.int_],
-            xs2: np.NDArray[np.int_],
-            xs3: np.NDArray[np.int_],
+            xss: np.ndarray[np.int64],
+            bins: Sequence[float] | None = None,
     ) -> Changepoint:
         cs = _Changepoints()
-        xs_length = len(xs0)
-        assert len(xs0) == len(xs1) == len(xs2) == len(xs3)
+        _, xs_length = xss.shape
         error_code = self._call(
             ctypes.byref(cs),
-            xs0.ctypes.data_as(ctypes.POINTER(ctypes.c_long)),
-            xs1.ctypes.data_as(ctypes.POINTER(ctypes.c_long)),
-            xs2.ctypes.data_as(ctypes.POINTER(ctypes.c_long)),
-            xs3.ctypes.data_as(ctypes.POINTER(ctypes.c_long)),
+            xss.astype(ctypes.c_long),
             xs_length,
             self.threshold_std,
             self.mu_min,
             self.alpha,
             self.m,
-            self.sleep
+            self.sleep,
+            self.majority,
         )
 
         match error_code:
@@ -92,20 +92,50 @@ class Bft_C:
         return significance_std, changepoint, triggertime
 
     @staticmethod
-    def bind() -> Callable:
+    def check_init_parameters(threshold_std: float, mu_min: float, alpha: float, m: int, sleep: int, majority: int):
+        """Checks validity of initialization arguments."""
+        check = BftCWrapper.bind_bft_check_init_parameters()
+        error_code = check(
+            threshold_std,
+            mu_min,
+            alpha,
+            m,
+            sleep,
+            majority,
+        )
+        match error_code:
+            case _Errors.INVALID_INPUT:
+                raise ValueError("The inputs contain invalid entries.")
+        return
+
+    @staticmethod
+    def bind_bft_check_init_parameters() -> Callable:
+        """Ctypes binding for C library interface."""
+        bft_check_init_parameters = clib_bft.bft_check_init_parameters
+        bft_check_init_parameters.restype = _Errors
+        bft_check_init_parameters.argtypes = [
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        return bft_check_init_parameters
+
+    def bind_bft_interface(self) -> Callable:
+        """Ctypes binding for C library interface."""
         bft_interface = clib_bft.bft_interface
         bft_interface.restype = _Errors
         bft_interface.argtypes = [
             ctypes.POINTER(_Changepoints),
-            ctypes.POINTER(ctypes.c_long),
-            ctypes.POINTER(ctypes.c_long),
-            ctypes.POINTER(ctypes.c_long),
-            ctypes.POINTER(ctypes.c_long),
+            self.NDPOINTER,
             ctypes.c_size_t,
             ctypes.c_double,
             ctypes.c_double,
             ctypes.c_double,
             ctypes.c_int,
-            ctypes.c_int
+            ctypes.c_int,
+            ctypes.c_int,
         ]
         return bft_interface

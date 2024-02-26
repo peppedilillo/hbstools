@@ -1,6 +1,12 @@
 #ifndef BFT_H
 #define BFT_H
 
+#if defined(_WIN32)
+#  define DLL00_EXPORT_API __declspec(dllexport)
+#else
+#  define DLL00_EXPORT_API
+#endif
+
 #include <stdlib.h>
 #include <stdbool.h>
 #include "poissonfocusses.h"
@@ -27,7 +33,7 @@ struct bft_changes
 };
 
 Bft* bft_init(enum bft_errors* err, double threshold_std, double mu_min,
-	double alpha, int m, int sleep);
+	double alpha, int m, int sleep, int majority);
 
 void bft_terminate(Bft* bft);
 
@@ -44,18 +50,17 @@ struct bft_changepoints
 	struct pf_changepoint changepoints[DETECTORS_NUMBER];
 };
 
-enum bft_errors bft_interface(struct bft_changepoints* cps,
-	count_t* xs0, count_t* xs1, count_t* xs2, count_t* xs3, size_t len,
+DLL00_EXPORT_API enum bft_errors bft_interface(struct bft_changepoints* cps,
+	count_t* xss, size_t len,
 	double threshold_std, double mu_min,
-	double alpha, int m, int sleep);
+	double alpha, int m, int sleep,
+	int majority);
 
 /**
  * Utilities
  */
 
-void bft_print(Bft* bft, size_t t, count_t* xs);
-
-enum bft_errors bft_check_init_parameters(double threshold_std, double mu_min,
-	double alpha, int m, int sleep);
+DLL00_EXPORT_API enum bft_errors bft_check_init_parameters(double threshold_std, double mu_min,
+	double alpha, int m, int sleep, int majority);
 
 #endif //BFT_H

@@ -1,16 +1,14 @@
 from pathlib import Path
 from typing import Iterator, Sequence
 
-import numpy as np
 import pandas as pd
 from rich.console import Console
 from rich.progress import track
 
 from hbstools.data import get_data
-from hbstools.data import histogram
 from hbstools.data import filter_energy
 from hbstools.io import read_gti_files
-from hbstools.types import Changepoint
+from hbstools.trigger import trigger_algorithm
 from hbstools.types import ChangepointMET
 from hbstools.types import GTI
 from hbstools.types import MET
@@ -41,50 +39,17 @@ class Search:
         self.skip = skip
         self.energy_lims = energy_lims
         self.algorithm_params = algorithm_params
-        self.algorithm = PoissonFocusSES
+        self.algorithm = trigger_algorithm(algorithm_params)
         self.console = console
 
     def __call__(self, dataset: Sequence[Path | str]) -> pd.DataFrame:
         return self.make_ttis(self.run_on_dataset(dataset))
-
-    def run(
-            self,
-            xs: Sequence[int],
-    ) -> Changepoint:
-        """Run the algorithm one step a time."""
-        # resets the algorithm at each call
-        changepoint = self.algorithm(**self.algorithm_params).run(xs)
-        return changepoint
-
-    def run_on_segment(
-            self,
-            counts: np.ndarray,
-            bins: np.ndarray,
-    ) -> list[Changepoint]:
-        """Runs on binned data restarting the algorithm after sleep."""
-
-        def f(cs, bs, skip, acc):
-            """Recursion helper"""
-            if not len(cs):
-                return []
-            s, cp, tt = self.run(cs)
-            # if ended with no trigger algorithm returns 0, len(xs) + 1, len(xs)
-            t = [(s, acc + cp, acc + tt)] if tt >= cp else []
-            return t + f(cs[tt + skip:], bs[tt + skip:], skip, acc + tt + skip)
-
-        return f(counts, bins, self.skip, 0)
 
     def run_on_dataset(
             self,
             dataset: Sequence[Path | str],
     ) -> dict[GTI, list[ChangepointMET]]:
         """Runs on every gtis and returns anomalies."""
-
-        def map_bins_to_times(rs, bs):
-            """FOCuS time are expressed as bin-indeces.
-            This transform from indeces to actual time."""
-            return [(r[0], bs[r[1]], bs[r[2]]) for r in rs]
-
         def progressbar(gen: Iterator):
             return track(
                 gen,
@@ -101,10 +66,8 @@ class Search:
             else get_data(sorted_folders)
         )
         for data, gti in _get_data:
-            data = filter_energy(self.energy_lims, data)
-            counts, bins = histogram(data, gti, self.binning)
-            anomalies = self.run_on_segment(counts, bins)
-            results[gti] = map_bins_to_times(anomalies, bins)
+            anomalies = self.algorithm()(filter_energy(data, self.energy_lims), gti, self.binning, self.skip)
+            results[gti] = anomalies
 
             # fmt: off
             if self.console:

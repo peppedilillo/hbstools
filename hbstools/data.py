@@ -70,23 +70,32 @@ def get_data(data_folders: Sequence[Path | str]) -> Iterator[tuple[pd.DataFrame,
     return f(gtis, data_folders[1:], read_event_files(data_folders[0]))
 
 
-def make_bins(
-    start: float,
-    stop: float,
-    step: float,
-) -> np.ndarray:
-    """Return bins including last one, which contains stop."""
-    num_intervals = int((stop - start) / step + 1)
-    return np.linspace(start, start + num_intervals * step, num_intervals + 1)
-
-
 def filter_energy(
-    energy_lims: tuple[float, float],
     data: pd.DataFrame,
+    energy_lims: tuple[float, float],
 ):
     """Filters data in an energy band."""
     low, hi = energy_lims
     return data[(data["ENERGY"] >= low) & (data["ENERGY"] < hi)]
+
+
+def _histogram(
+    data: Sequence,
+    start: float,
+    stop: float,
+    binning: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Bins data in time and returns counts and bins. The `counts` array has
+    length int((stop - start) / binning + 1), the `bins` array is
+    longer by one unit. The last element of `bins` is guaranteed to be
+    greater-equal than stop."""
+    num_intervals = int((stop - start) / binning + 1)
+    counts, bins = np.histogram(
+        data,
+        range=(start, start + num_intervals * binning),
+        bins=num_intervals,
+    )
+    return counts, bins
 
 
 def histogram(
@@ -94,9 +103,13 @@ def histogram(
     gti: GTI,
     binning: float,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Bins data in time."""
-    bins = make_bins(gti.start, gti.end, binning)
-    counts, _ = np.histogram(data["TIME"], bins=bins)
+    """A specialized histogram for event lists."""
+    counts, bins = _histogram(
+        data["TIME"],
+        gti.start,
+        gti.end,
+        binning,
+    )
     return counts, bins
 
 
@@ -104,10 +117,10 @@ def histogram_quadrants(
     data: pd.DataFrame,
     gti: GTI,
     binning: float,
-) -> tuple[dict, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Bins data in time, separating data from different quadrants."""
-    bins = make_bins(gti.start, gti.end, binning)
-    return {
-        quadid: histogram(quadrant_data, gti, binning)[0]
-        for quadid, quadrant_data in data.groupby("QUADID")
-    }, bins
+    _, bins = _histogram([], gti.start, gti.end, binning)
+    return np.vstack(
+        [histogram(quadrant_data, gti, binning)[0]
+         for _, quadrant_data in data.groupby("QUADID", observed=False)]
+    ), bins

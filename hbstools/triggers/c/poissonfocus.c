@@ -313,16 +313,18 @@ static inline bool triggered(struct pf* f)
  *             encounters a trigger.
  *
  * @param f : a pointer to an initialized structure.
- * @param t : this is a bool flag, we will write to this if
+ * @param trigflag : this is a bool flag, we will write to this if
  * we found any trigger during the update.
  * @param x : latest count.
  * @param b : latest background rate value.
  * @return : error code
  */
 enum pf_errors
-pf_step(struct pf* f, bool* t, count_t x, double b)
+pf_step(struct pf* f, bool* trigflag, count_t x, double b)
 {
-	switch (f->status.code)
+    *trigflag = false;
+
+    switch (f->status.code)
 	{
 	case TEST :
 	{
@@ -331,11 +333,10 @@ pf_step(struct pf* f, bool* t, count_t x, double b)
 			f->status.code = STOP;
 			f->status.latest_error = PF_ERROR_INVALID_INPUT;
 			f->change = (struct change){ 0 };
-			*t = false;
 			return PF_ERROR_INVALID_INPUT;
 		}
 		f->change = step_helper(f, x, b);
-		*t = triggered(f);
+		*trigflag = triggered(f);
 		break;
 	}
 	case STOP :
@@ -360,35 +361,6 @@ struct pf_change pf_get_change(struct pf* f)
 {
 	return (struct pf_change){ sqrt(2 * f->change.significance_llr),
 							   f->change.offset };
-}
-
-/**
- * Prints log strings likes:
- * `t = 1, x = 2, b = 1.00, max = 0.00, toff = 0, curves: (2, -1.00, -1, 0.00)`
- * Note that curves offset and time members are negative for compatibility
- * with previous implementations. the `b` and `t` members of a curve are
- * defined positive in this implementation.
- */
-void pf_print(struct pf* f, size_t t, count_t x_t, double b_t)
-{
-	struct stack* curves = f->curves;
-	struct curve* q, * acc = stack_pop(curves);
-
-	printf("t = %zu, x = %d, b = %.2f, max = %.2f, toff = %d, curves: ",
-		t, x_t, b_t, f->change.significance_llr, -f->change.offset);
-	int i = curves->tail == curves->capacity ? 0 : curves->tail + 1;
-	while (i != curves->head)
-	{
-		q = (curves->arr + i);
-		printf("(%d, %.2f, %d, %.2f) ",
-			+(count_t)(acc->x - q->x),
-			-(acc->b - q->b),
-			-(int)(acc->t - q->t),
-			q->m);
-		i == curves->capacity ? i = 0 : i++;
-	}
-	printf("\n");
-	stack_push(curves, acc);
 }
 
 /**

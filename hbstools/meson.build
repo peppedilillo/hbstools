@@ -4,6 +4,7 @@ py.install_sources(
     'data.py',
     'io.py',
     'search.py',
+    'trigger.py',
     'types.py',
   ],
   subdir: 'hbstools'

@@ -1,6 +1,8 @@
 py.install_sources(
   [
     '__init__.py',
+    'bft.py',
+    'bft_cwrap.py',
     'poissonfocus.py',
     'poissonfocusdes.py',
     'poissonfocusses_cwrap.py',

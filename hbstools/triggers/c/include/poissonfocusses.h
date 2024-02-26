@@ -1,6 +1,12 @@
 #ifndef POISSONFOCUSSES_H
 #define POISSONFOCUSSES_H
 
+#if defined(_WIN32)
+#  define DLL00_EXPORT_API __declspec(dllexport)
+#else
+#  define DLL00_EXPORT_API
+#endif
+
 #include <stdlib.h>
 #include <stdbool.h>
 #include "poissonfocus.h"
@@ -32,7 +38,7 @@ struct pf_change pfs_get_change(PoissonFocusSES* f);
  * This is the API for offline mode applications
  */
 
-enum pfs_errors
+DLL00_EXPORT_API enum pfs_errors
 pfs_interface(struct pf_changepoint* cp, count_t* xs, size_t len,
 	double threshold_std, double mu_min, double alpha, int m, int sleep);
 
@@ -40,9 +46,8 @@ pfs_interface(struct pf_changepoint* cp, count_t* xs, size_t len,
  * Utilities.
  */
 
-void pfs_print(PoissonFocusSES* f, size_t t, count_t x_t);
-
-enum pfs_errors pfs_check_init_parameters(double threshold_std, double mu_min,
+DLL00_EXPORT_API enum pfs_errors
+pfs_check_init_parameters(double threshold_std, double mu_min,
 	double alpha, int m, int sleep);
 
 #endif //POISSONFOCUSSES_H

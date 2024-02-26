@@ -1,9 +1,14 @@
+"""
+Ctypes binding to the header of the C implementation of Poisson FOCuS
+with single exponential smoothing background estimate.
+"""
+
+
 import ctypes
 import enum
 from typing import Callable
 
 import numpy as np
-import numpy.typing as npt
 
 from hbstools.triggers import _LIBCFOCUS
 from hbstools.types import Changepoint
@@ -27,26 +32,25 @@ class _Changepoint(ctypes.Structure):
     ]
 
 
-class PoissonFocusSES_C:
+class PoissonFocusSesCwrapper:
     """A wrapper to the C implementation of FOCuS with simple exp. smoothing."""
     def __init__(
             self,
             threshold_std: float,
             mu_min: float,
             alpha: float,
-            beta,  # TODO: remove this when adding dispatcher
-            t_max,  # TODO: same as above
             m: int,
             sleep: int,
     ):
+        self.check_init_parameters(threshold_std, mu_min, alpha, m, sleep)
         self.threshold_std = threshold_std
         self.mu_min = mu_min
         self.alpha = alpha
         self.m = m
         self.sleep = sleep
-        self._call = self.bind()
+        self._call = self.bind_pfs_interface()
 
-    def __call__(self, xs: npt.NDArray[np.int_]) -> Changepoint:
+    def __call__(self, xs: np.ndarray[np.int_]) -> Changepoint:
         c = _Changepoint()
         xs_length = len(xs)
         xs_pointer = xs.ctypes.data_as(ctypes.POINTER(ctypes.c_long))
@@ -60,7 +64,6 @@ class PoissonFocusSES_C:
             self.m,
             self.sleep
         )
-
         match error_code:
             case _Errors.INVALID_INPUT:
                 raise ValueError("The inputs contain invalid entries.")
@@ -69,7 +72,36 @@ class PoissonFocusSES_C:
         return c.significance_std, c.changepoint, c.triggertime
 
     @staticmethod
-    def bind() -> Callable:
+    def check_init_parameters(threshold_std: float, mu_min: float, alpha: float, m: int, sleep: int,):
+        """Checks validity of initialization arguments."""
+        check = PoissonFocusSesCwrapper.bind_pfs_check_init_parameters()
+        error_code = check(
+            threshold_std,
+            mu_min,
+            alpha,
+            m,
+            sleep,
+        )
+        match error_code:
+            case _Errors.INVALID_INPUT:
+                raise ValueError("The inputs contain invalid entries.")
+        return
+
+    @staticmethod
+    def bind_pfs_check_init_parameters() -> Callable:
+        pfs_check_init_parameters = clib_pfs.pfs_check_init_parameters
+        pfs_check_init_parameters.restype = _Errors
+        pfs_check_init_parameters.argtypes = [
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_int,
+            ctypes.c_int,
+        ]
+        return pfs_check_init_parameters
+
+    @staticmethod
+    def bind_pfs_interface() -> Callable:
         pfs_interface = clib_pfs.pfs_interface
         pfs_interface.restype = _Errors
         pfs_interface.argtypes = [
