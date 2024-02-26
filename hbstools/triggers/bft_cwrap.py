@@ -41,7 +41,7 @@ class _Changepoints(ctypes.Structure):
 
 class BftCWrapper:
     """A wrapper to the C implementation of the BFT."""
-    NDPOINTER = np.ctypeslib.ndpointer(dtype=ctypes.c_long, ndim=2, flags="C")
+    NDPOINTER = np.ctypeslib.ndpointer(dtype=np.int64, ndim=2)
 
     def __init__(
             self,
@@ -70,7 +70,7 @@ class BftCWrapper:
         _, xs_length = xss.shape
         error_code = self._call(
             ctypes.byref(cs),
-            xss.astype(ctypes.c_long),
+            xss if xss.dtype == np.int64 else xss.astype(np.int64),
             xs_length,
             self.threshold_std,
             self.mu_min,
