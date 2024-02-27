@@ -3,12 +3,14 @@ Wraps a number of independent Poisson-FOCuS algorithms with DES background
 estimate and triggers if more than half of them are over threshold.
 """
 
-from hbstools.triggers.poissonfocusdes import PoissonFocusDes
-from hbstools.triggers.poissonfocus import PoissonFocus
-from hbstools.types import Changepoint, Change
-
 from typing import Callable
+
 import numpy.typing as npt
+
+from hbstools.triggers.poissonfocus import PoissonFocus
+from hbstools.triggers.poissonfocusdes import PoissonFocusDes
+from hbstools.types import Change
+from hbstools.types import Changepoint
 
 _QUADRANTS_NUMBER = 4
 
@@ -61,7 +63,8 @@ class Bft:
                 t_max=t_max,
                 s_0=s_0,
                 b_0=b_0,
-            ) for _ in range(_QUADRANTS_NUMBER)
+            )
+            for _ in range(_QUADRANTS_NUMBER)
         ]
 
     @fold_changepoints
@@ -70,7 +73,7 @@ class Bft:
         xss: npt.NDArray,
     ) -> list[Changepoint]:
         det_ids, _ = xss.shape
-        changes = [(0., 0), (0., 0), (0., 0), (0., 0)]
+        changes = [(0.0, 0), (0.0, 0), (0.0, 0), (0.0, 0)]
         t_length = len(xss[0])
         for t in range(t_length):
             changes = self.step([xss[det_id, t] for det_id in range(det_ids)])

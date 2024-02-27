@@ -1,14 +1,17 @@
+from typing import Callable, Type
+
+import numpy as np
 import pandas as pd
 
-import hbstools.triggers.poissonfocusdes as pfd
+from hbstools.data import histogram
+from hbstools.data import histogram_quadrants
 import hbstools.triggers.bft as bft
-import hbstools.triggers.poissonfocusses_cwrap as pfsc
 import hbstools.triggers.bft_cwrap as bftc
-from hbstools.types import ChangepointMET, Changepoint, GTI
-from hbstools.data import histogram, histogram_quadrants
-
-from typing import Type, Callable
-import numpy as np
+import hbstools.triggers.poissonfocusdes as pfd
+import hbstools.triggers.poissonfocusses_cwrap as pfsc
+from hbstools.types import Changepoint
+from hbstools.types import ChangepointMET
+from hbstools.types import GTI
 
 
 def _find_suitable_binner(

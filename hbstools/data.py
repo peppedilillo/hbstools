@@ -2,11 +2,11 @@ from math import isclose
 from pathlib import Path
 from typing import Iterator, Sequence
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
-from hbstools.io import read_gti_files
 from hbstools.io import read_event_files
+from hbstools.io import read_gti_files
 from hbstools.types import GTI
 
 

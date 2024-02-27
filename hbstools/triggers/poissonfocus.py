@@ -6,7 +6,6 @@ See Ward 2023 & Dilillo 2024.
 from math import inf
 from math import log
 from math import sqrt
-
 from typing import Sequence
 
 

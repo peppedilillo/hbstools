@@ -1,9 +1,7 @@
 import unittest
 
-
 from hbstools.data import get_data
 from hbstools.data import histogram_quadrants
-
 
 dataset_directory = "./data_100s_stronganomaly60s/"
 generator = get_data([dataset_directory])

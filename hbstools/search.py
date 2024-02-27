@@ -5,9 +5,9 @@ import pandas as pd
 from rich.console import Console
 from rich.progress import track
 
-import hbstools.trigger as trig
-from hbstools.data import get_data
 from hbstools.data import filter_energy
+from hbstools.data import get_data
+import hbstools.trigger as trig
 from hbstools.types import ChangepointMET
 from hbstools.types import GTI
 from hbstools.types import MET

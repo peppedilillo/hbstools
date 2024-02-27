@@ -8,7 +8,8 @@ from math import sqrt
 from typing import Deque, Sequence
 
 from hbstools.triggers.poissonfocus import PoissonFocus
-from hbstools.types import Changepoint, Change
+from hbstools.types import Change
+from hbstools.types import Changepoint
 
 
 class PoissonFocusDes:

@@ -1,12 +1,11 @@
+from pathlib import Path
 import unittest
 
 from hbstools.io import read_event_files
-from hbstools.trigger import get_algorithm
 from hbstools.search import Search
+from hbstools.trigger import get_algorithm
 import hbstools.triggers.poissonfocusdes as pfd
 from hbstools.types import GTI
-
-from pathlib import Path
 
 dataset_directory = Path(__file__).parent / "data_100s_stronganomaly60s/"
 

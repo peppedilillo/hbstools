@@ -7,7 +7,6 @@ import pandas as pd
 from hbstools.data import histogram
 from hbstools.types import GTI
 
-
 inputs = [
     (pd.DataFrame({"TIME": [0.05, 0.1, 0.2, 0.35]}), GTI(0.05, 0.28), 0.1),
     (pd.DataFrame({"TIME": [0.06, 0.3]}), GTI(0.05, 0.28), 0.1),
