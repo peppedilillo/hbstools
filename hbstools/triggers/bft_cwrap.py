@@ -18,6 +18,7 @@ NUMDETECTOR = 4
 
 class _Errors(enum.IntEnum):
     """Errors returned by the C implementation."""
+
     NO_ERRORS = 0
     INVALID_ALLOCATION = 1
     INVALID_INPUT = 2
@@ -25,6 +26,7 @@ class _Errors(enum.IntEnum):
 
 class _Changepoint(ctypes.Structure):
     """This is a wrapper to C definition of a changepoint."""
+
     _fields_ = [
         ("significance_std", ctypes.c_double),
         ("changepoint", ctypes.c_size_t),
@@ -34,23 +36,23 @@ class _Changepoint(ctypes.Structure):
 
 class _Changepoints(ctypes.Structure):
     """Hosts four changepoints, one per detectors"""
-    _fields_ = [
-        ("changepoints", _Changepoint * NUMDETECTOR)
-    ]
+
+    _fields_ = [("changepoints", _Changepoint * NUMDETECTOR)]
 
 
 class BftCWrapper:
     """A wrapper to the C implementation of the BFT."""
+
     NDPOINTER = np.ctypeslib.ndpointer(dtype=np.int64, ndim=2)
 
     def __init__(
-            self,
-            threshold_std: float,
-            mu_min: float,
-            alpha: float,
-            m: int,
-            sleep: int,
-            majority: int,
+        self,
+        threshold_std: float,
+        mu_min: float,
+        alpha: float,
+        m: int,
+        sleep: int,
+        majority: int,
     ):
         self.check_init_parameters(threshold_std, mu_min, alpha, m, sleep, majority)
         self.threshold_std = threshold_std
@@ -62,8 +64,8 @@ class BftCWrapper:
         self._call = self.bind_bft_interface()
 
     def __call__(
-            self,
-            xss: np.ndarray[np.int64],
+        self,
+        xss: np.ndarray[np.int64],
     ) -> Changepoint:
         cs = _Changepoints()
         _, xs_length = xss.shape
@@ -91,7 +93,14 @@ class BftCWrapper:
         return significance_std, changepoint, triggertime
 
     @staticmethod
-    def check_init_parameters(threshold_std: float, mu_min: float, alpha: float, m: int, sleep: int, majority: int):
+    def check_init_parameters(
+        threshold_std: float,
+        mu_min: float,
+        alpha: float,
+        m: int,
+        sleep: int,
+        majority: int,
+    ):
         """Checks validity of initialization arguments."""
         check = BftCWrapper.bind_bft_check_init_parameters()
         error_code = check(

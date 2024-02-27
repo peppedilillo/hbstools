@@ -15,6 +15,7 @@ class PoissonFocusDes:
     A wrapper to Poisson-FOCuS implementing background estimate via double
     exponential smoothing.
     """
+
     def __init__(
         self,
         threshold_std: float,
@@ -45,7 +46,17 @@ class PoissonFocusDes:
             b_0: DES init slope parameter. must be greater or equal than 0.
             defaults to 0.
         """
-        self.check_init_parameters(threshold_std, alpha, beta, m, sleep, mu_min, t_max, s_0, b_0,)
+        self.check_init_parameters(
+            threshold_std,
+            alpha,
+            beta,
+            m,
+            sleep,
+            mu_min,
+            t_max,
+            s_0,
+            b_0,
+        )
 
         self.focus_params = {
             "mu_min": mu_min,
@@ -89,7 +100,17 @@ class PoissonFocusDes:
         return 0.0, t + 1, t
 
     @staticmethod
-    def check_init_parameters(threshold_std, alpha, beta, m, sleep, mu_min, t_max, s_0, b_0,):
+    def check_init_parameters(
+        threshold_std,
+        alpha,
+        beta,
+        m,
+        sleep,
+        mu_min,
+        t_max,
+        s_0,
+        b_0,
+    ):
         """Checks validity of initialization arguments."""
         PoissonFocus.check_init_parameters(threshold_std, mu_min)
         if alpha < 0.0:
@@ -176,6 +197,7 @@ class PoissonFocusDes:
 
 class Debugger:
     """A debugging wrapper to PoissonFocusDES."""
+
     def __init__(self, **kwargs):
         self.init_parameters = kwargs
         self.log = {

@@ -4,11 +4,11 @@ def _library_path(libname: str) -> str:
     from pathlib import Path
     import sys
 
-    if sys.platform.startswith('win32'):
+    if sys.platform.startswith("win32"):
         suffix = ".dll"
-    elif sys.platform.startswith('linux'):
+    elif sys.platform.startswith("linux"):
         suffix = ".so"
-    elif sys.platform.startswith('darwin'):
+    elif sys.platform.startswith("darwin"):
         suffix = ".dylib"
     else:
         raise OSError("System not supported")

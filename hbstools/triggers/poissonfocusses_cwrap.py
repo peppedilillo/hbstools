@@ -18,6 +18,7 @@ clib_pfs = ctypes.CDLL(_LIBCFOCUS)
 
 class _Errors(enum.IntEnum):
     """Errors returned by the C implementation."""
+
     NO_ERRORS = 0
     INVALID_ALLOCATION = 1
     INVALID_INPUT = 2
@@ -25,6 +26,7 @@ class _Errors(enum.IntEnum):
 
 class _Changepoint(ctypes.Structure):
     """This is a wrapper to our C definition of a changepoint."""
+
     _fields_ = [
         ("significance_std", ctypes.c_double),
         ("changepoint", ctypes.c_size_t),
@@ -34,13 +36,14 @@ class _Changepoint(ctypes.Structure):
 
 class PoissonFocusSesCwrapper:
     """A wrapper to the C implementation of FOCuS with simple exp. smoothing."""
+
     def __init__(
-            self,
-            threshold_std: float,
-            mu_min: float,
-            alpha: float,
-            m: int,
-            sleep: int,
+        self,
+        threshold_std: float,
+        mu_min: float,
+        alpha: float,
+        m: int,
+        sleep: int,
     ):
         self.check_init_parameters(threshold_std, mu_min, alpha, m, sleep)
         self.threshold_std = threshold_std
@@ -62,7 +65,7 @@ class PoissonFocusSesCwrapper:
             self.mu_min,
             self.alpha,
             self.m,
-            self.sleep
+            self.sleep,
         )
         match error_code:
             case _Errors.INVALID_INPUT:
@@ -72,7 +75,13 @@ class PoissonFocusSesCwrapper:
         return c.significance_std, c.changepoint, c.triggertime
 
     @staticmethod
-    def check_init_parameters(threshold_std: float, mu_min: float, alpha: float, m: int, sleep: int,):
+    def check_init_parameters(
+        threshold_std: float,
+        mu_min: float,
+        alpha: float,
+        m: int,
+        sleep: int,
+    ):
         """Checks validity of initialization arguments."""
         check = PoissonFocusSesCwrapper.bind_pfs_check_init_parameters()
         error_code = check(
@@ -112,6 +121,6 @@ class PoissonFocusSesCwrapper:
             ctypes.c_double,
             ctypes.c_double,
             ctypes.c_int,
-            ctypes.c_int
+            ctypes.c_int,
         ]
         return pfs_interface

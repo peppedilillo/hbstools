@@ -40,11 +40,11 @@ def read_event_files(data_folder: str | Path) -> pd.DataFrame:
             xdata_df = pd.DataFrame(hdul[1].data)
         with fits.open(sdata_path) as hdul:
             sdata_df = pd.DataFrame(hdul[1].data)
-        category_quads_t = CategoricalDtype(categories=[0,1,2,3], ordered=True)
+        category_quads_t = CategoricalDtype(categories=[0, 1, 2, 3], ordered=True)
         return (
             pd.concat([xdata_df, sdata_df])
             .sort_values(by=["TIME"])
-            .astype({'QUADID': category_quads_t})
+            .astype({"QUADID": category_quads_t})
             .reset_index(drop=True)
         )
 

@@ -27,12 +27,12 @@ class Search:
     """Base search class."""
 
     def __init__(
-            self,
-            binning: float,
-            skip: int,
-            energy_lims: tuple[float, float],
-            algorithm_params: dict,
-            console: Console | None = None,
+        self,
+        binning: float,
+        skip: int,
+        energy_lims: tuple[float, float],
+        algorithm_params: dict,
+        console: Console | None = None,
     ):
         self.binning = binning
         self.skip = skip
@@ -45,28 +45,33 @@ class Search:
         return self.make_ttis(self.run_on_dataset(dataset))
 
     def run_on_dataset(
-            self,
-            folders: Sequence[Path | str],
+        self,
+        folders: Sequence[Path | str],
     ) -> dict[GTI, list[ChangepointMET]]:
         """Runs on every gtis and returns anomalies."""
+
         def progressbar(gen: Iterator, enabled=False):
-            return track(
-                gen,
-                description="[dim cyan](Running..)",
-                transient=True,
-                console=self.console,
-            ) if enabled else gen
+            return (
+                track(
+                    gen,
+                    description="[dim cyan](Running..)",
+                    transient=True,
+                    console=self.console,
+                )
+                if enabled
+                else gen
+            )
 
         _get_data = (
-            progressbar(get_data(folders))
-            if self.console
-            else get_data(folders)
+            progressbar(get_data(folders)) if self.console else get_data(folders)
         )
 
         results = {}
         run = trig.set(self.algorithm_params)
         for data, gti in _get_data:
-            anomalies = run(filter_energy(data, self.energy_lims), gti, self.binning, self.skip)
+            anomalies = run(
+                filter_energy(data, self.energy_lims), gti, self.binning, self.skip
+            )
             results[gti] = anomalies
 
             # fmt: off
@@ -81,10 +86,10 @@ class Search:
         return results
 
     def compute_bkg_pre(
-            self,
-            trigtime: MET,
-            changepoint: MET,
-            gti: GTI,
+        self,
+        trigtime: MET,
+        changepoint: MET,
+        gti: GTI,
     ) -> tuple[float, float]:
         """Times from changepoint of an interval ending `m` steps behind the triggertime,
         with duration binning / alpha."""
@@ -101,10 +106,10 @@ class Search:
         return start, end
 
     def compute_bkg_post(
-            self,
-            trigtime: MET,
-            changepoint: MET,
-            gti: GTI,
+        self,
+        trigtime: MET,
+        changepoint: MET,
+        gti: GTI,
     ) -> tuple[float, float]:
         """Times from changepoint of an interval starting after skip steps from triggertime,
         with duration binning / alpha."""
@@ -121,9 +126,9 @@ class Search:
         return start, end
 
     def format_result(
-            self,
-            result: ChangepointMET,
-            gti: GTI,
+        self,
+        result: ChangepointMET,
+        gti: GTI,
     ) -> TTI:
         """Transforms focus results (times expressed as mets) into events formatted like:
         (bkg_pres_start, bkg_pre_ends, event_starts, event_ends, bkg_post_start, bkg_post_end)
@@ -136,8 +141,8 @@ class Search:
         return *bkg_pre, *event_interval, bkg_post_start, bkg_post_end
 
     def make_ttis(
-            self,
-            results: dict[GTI, list[ChangepointMET]],
+        self,
+        results: dict[GTI, list[ChangepointMET]],
     ) -> pd.DataFrame:
         """Puts ttis into a dataframe"""
         formatted_results = []

@@ -12,6 +12,7 @@ from typing import Sequence
 
 class Curve:
     """A Poisson-FOCuS curve supporting maximizer optimization."""
+
     def __init__(self, x: float, b: float, t: int, m: float):
         self.x = x
         self.b = b

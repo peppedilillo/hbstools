@@ -12,7 +12,9 @@ import numpy as np
 
 
 def _find_suitable_binner(
-        algorithm: Type[pfd.PoissonFocusDes | bft.Bft | pfsc.PoissonFocusSesCwrapper | bftc.BftCWrapper,],
+    algorithm: Type[
+        pfd.PoissonFocusDes | bft.Bft | pfsc.PoissonFocusSesCwrapper | bftc.BftCWrapper,
+    ],
 ) -> Callable:
     """Given an algorithm type, finds a suitable binner"""
     match algorithm:
@@ -23,17 +25,44 @@ def _find_suitable_binner(
 
 
 def get_algorithm(
-        algorithm_params: dict
-) -> Type[pfd.PoissonFocusDes | bft.Bft | pfsc.PoissonFocusSesCwrapper | bftc.BftCWrapper]:
+    algorithm_params: dict,
+) -> Type[
+    pfd.PoissonFocusDes | bft.Bft | pfsc.PoissonFocusSesCwrapper | bftc.BftCWrapper
+]:
     """Given a dictionary of parameters tries to find a suitable algoritm,
     giving precedence to algorithms with C implementations."""
     match algorithm_params:
-        case {'threshold_std': _, 'mu_min': _, 'alpha': _, 'beta': _, 'm': _, 't_max': _, 'sleep': _, 'majority': _}:
+        case {
+            "threshold_std": _,
+            "mu_min": _,
+            "alpha": _,
+            "beta": _,
+            "m": _,
+            "t_max": _,
+            "sleep": _,
+            "majority": _,
+        }:
             return bft.Bft
-        case {'threshold_std': _, 'mu_min': _, 'alpha': _, 'beta': _, 'm': _, 't_max': _, 'sleep': _}:
+        case {
+            "threshold_std": _,
+            "mu_min": _,
+            "alpha": _,
+            "beta": _,
+            "m": _,
+            "t_max": _,
+            "sleep": _,
+        }:
             return pfd.PoissonFocusDes
-        case {'threshold_std': _, 'mu_min': _, 'alpha': _, 'm': _, 'sleep': _, 'majority': _}:
+        case {
+            "threshold_std": _,
+            "mu_min": _,
+            "alpha": _,
+            "m": _,
+            "sleep": _,
+            "majority": _,
+        }:
             return bftc.BftCWrapper
+
 
 def _run_on_segment(
     init_algorithm: Callable,
@@ -42,6 +71,7 @@ def _run_on_segment(
     skip: int,
 ) -> list[Changepoint]:
     """Runs on binned data restarting the algorithm after skip bin-steps."""
+
     def helper(cs, bs, skip, acc):
         """Recursion helper"""
         match cs.shape:
@@ -54,13 +84,17 @@ def _run_on_segment(
                 # must run before the algorithm is actually launched on the data.
                 s, cp, tt = init_algorithm()(cs)
                 t = [(s, acc + cp, acc + tt)] if tt >= cp else []
-                return t + helper(cs[:, tt + skip:], bs[tt + skip:], skip, acc + tt + skip)
+                return t + helper(
+                    cs[:, tt + skip :], bs[tt + skip :], skip, acc + tt + skip
+                )
             case (0,):
                 return []
             case (_,):
                 s, cp, tt = init_algorithm()(cs)
                 t = [(s, acc + cp, acc + tt)] if tt >= cp else []
-                return t + helper(cs[tt + skip:], bs[tt + skip:], skip, acc + tt + skip)
+                return t + helper(
+                    cs[tt + skip :], bs[tt + skip :], skip, acc + tt + skip
+                )
             case _:
                 raise ValueError("Cannot match shape of counts with anything.")
 
@@ -74,6 +108,7 @@ def set(
 
     The outer layer identifies a suitable algorithm and binner.
     """
+
     def run(data: pd.DataFrame, gti: GTI, binning, skip: int) -> list[ChangepointMET]:
         """Run the algorithm, restarting each time a trigger is found."""
         counts, bins = binner(data, gti, binning)

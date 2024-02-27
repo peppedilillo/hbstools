@@ -16,6 +16,7 @@ _QUADRANTS_NUMBER = 4
 def fold_changepoints(func: Callable):
     """A decorator for reducing a list of changepoints from different detectors
     to a single changepoint"""
+
     def wrapper(*args, **kwargs) -> Changepoint:
         """Helper function"""
         changepoints = func(*args, **kwargs)
@@ -23,13 +24,15 @@ def fold_changepoints(func: Callable):
         changepoint = min([c[1] for c in changepoints])
         triggertime = max([c[2] for c in changepoints])
         return significance_std, changepoint, triggertime
+
     return wrapper
 
 
 class Bft:
-    """ BFT stands for Big Focus Trigger :^). It is a manager of multiple,
+    """BFT stands for Big Focus Trigger :^). It is a manager of multiple,
     independent FOCuS algorithms, with autonoumous background estimate by
     double exponential smoothing."""
+
     def __init__(
         self,
         threshold_std: float,
@@ -43,7 +46,9 @@ class Bft:
         b_0: float | None = None,
         majority: int = 3,
     ):
-        self.check_init_parameters(threshold_std, alpha, beta, m, sleep, t_max, mu_min, s_0, b_0, majority)
+        self.check_init_parameters(
+            threshold_std, alpha, beta, m, sleep, t_max, mu_min, s_0, b_0, majority
+        )
         self.majority = majority
         self.focusexp_params = {
             "threshold_std": threshold_std,
@@ -57,8 +62,7 @@ class Bft:
             "b_0": b_0,
         }
         self.fs = [
-            PoissonFocusDes(**self.focusexp_params)
-            for _ in range(_QUADRANTS_NUMBER)
+            PoissonFocusDes(**self.focusexp_params) for _ in range(_QUADRANTS_NUMBER)
         ]
 
     @fold_changepoints
@@ -76,25 +80,21 @@ class Bft:
         return [*map(lambda c: (c[0], t - c[1] + 1, t), changes)]
 
     @staticmethod
-    def check_init_parameters(threshold_std, alpha, beta, m, sleep, t_max, mu_min, s_0, b_0, majority):
+    def check_init_parameters(
+        threshold_std, alpha, beta, m, sleep, t_max, mu_min, s_0, b_0, majority
+    ):
         """Checks validity of initialization arguments."""
         PoissonFocus.check_init_parameters(
             threshold_std,
             mu_min,
         )
         PoissonFocusDes.check_init_parameters(
-            threshold_std,
-            alpha,
-            beta,
-            m,
-            sleep,
-            mu_min,
-            t_max,
-            s_0,
-            b_0
+            threshold_std, alpha, beta, m, sleep, mu_min, t_max, s_0, b_0
         )
         if majority < 1 or majority > _QUADRANTS_NUMBER:
-            raise ValueError("majority should be comprised between 1 and `detector_number`")
+            raise ValueError(
+                "majority should be comprised between 1 and `detector_number`"
+            )
         return
 
     def qc(self, changes: list[Changepoint]) -> list[Changepoint]:
@@ -104,6 +104,6 @@ class Bft:
 
     def step(self, xts: list[int]) -> list[Changepoint]:
         """Basic algorithm step, i.e. call subalgorithms and asks them to do
-         their thing."""
+        their thing."""
         # returns 4 quality-checked changes
         return self.qc([f.step(x_t) for f, x_t in zip(self.fs, xts)])

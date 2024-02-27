@@ -15,7 +15,7 @@ def merge_overlapping_gtis(gtis: list[GTI], tolerance: float = 1.0) -> list[tupl
     F([(1, 2), (3, 4), (4, 5)]) = [(1, 2), (3, 5)]"""
 
     def overlap(x: GTI, y: GTI, abs_tol: float):
-        """`x` overlaps `y` if `x` starts before or at the end of `y` """
+        """`x` overlaps `y` if `x` starts before or at the end of `y`"""
         assert x.start < y.end
         return isclose(x.end, y.start, abs_tol=abs_tol) or (y.start < x.end)
 
@@ -66,7 +66,9 @@ def get_data(data_folders: Sequence[Path | str]) -> Iterator[tuple[pd.DataFrame,
             yield from f(gtis[1:], files, after(df, gti.end))
 
     sorted_folders = sorted(data_folders, key=lambda d: read_gti_files(d)[0].start)
-    all_gtis = [gti for gtis in [read_gti_files(dp) for dp in sorted_folders] for gti in gtis]
+    all_gtis = [
+        gti for gtis in [read_gti_files(dp) for dp in sorted_folders] for gti in gtis
+    ]
     gtis = merge_overlapping_gtis(all_gtis)
     return f(gtis, sorted_folders[1:], read_event_files(sorted_folders[0]))
 
@@ -121,7 +123,12 @@ def histogram_quadrants(
 ) -> tuple[np.ndarray, np.ndarray]:
     """Bins data in time, separating data from different quadrants."""
     _, bins = _histogram([], gti.start, gti.end, binning)
-    return np.vstack(
-        [histogram(quadrant_data, gti, binning)[0]
-         for _, quadrant_data in data.groupby("QUADID", observed=False)]
-    ), bins
+    return (
+        np.vstack(
+            [
+                histogram(quadrant_data, gti, binning)[0]
+                for _, quadrant_data in data.groupby("QUADID", observed=False)
+            ]
+        ),
+        bins,
+    )
