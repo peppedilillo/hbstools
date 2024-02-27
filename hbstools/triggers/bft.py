@@ -7,7 +7,7 @@ from hbstools.triggers.poissonfocusdes import PoissonFocusDes
 from hbstools.triggers.poissonfocus import PoissonFocus
 from hbstools.types import Changepoint
 
-from typing import Sequence, Callable
+from typing import Callable
 import numpy as np
 
 _QUADRANTS_NUMBER = 4
@@ -64,23 +64,16 @@ class Bft:
     @fold_changepoints
     def __call__(
         self,
-        xss: np.ndarray[np.int_],
-        bins: Sequence[float] | None = None,
+        xss: np.ndarray[int],
     ) -> list[Changepoint]:
         det_ids = range(xss.shape[0])
-        t = 0
         changes = {}
         t_length = len(xss[0])
         for t in range(t_length):
             changes = self.step([xss[det_id, t] for det_id in det_ids])
-            if len(changes) >= self.majority:
+            if len([*filter(lambda c: c[0] > 0, changes)]) >= self.majority:
                 break
-        return [
-            (lambda s, o, t_: (s, t_ - o + 1, t_))(*changes[det_id], t)
-            if (det_id in changes)
-            else (0, t + 1, t)
-            for det_id in det_ids
-        ]
+        return [*map(lambda c: (c[0], t - c[1] + 1, t), changes)]
 
     @staticmethod
     def check_init_parameters(threshold_std, alpha, beta, m, sleep, t_max, mu_min, s_0, b_0, majority):
@@ -104,16 +97,12 @@ class Bft:
             raise ValueError("majority should be comprised between 1 and `detector_number`")
         return
 
-    def qc(self, changes: list[tuple]) -> dict[tuple]:
+    def qc(self, changes: list[Changepoint]) -> list[Changepoint]:
         """A quality control step. A change goes through only if its associated
         significance is greater than threshold"""
-        return {
-            det_num: (significance, offset)
-            for det_num, (significance, offset) in enumerate(changes)
-            if significance > self.fs[det_num].focus.threshold_std
-        }
+        return [f.qc(*c) for f, c in zip(self.fs, changes)]
 
-    def step(self, xts: list[int]) -> dict[tuple]:
+    def step(self, xts: list[int]) -> list[Changepoint]:
         """Basic algorithm step, i.e. call subalgorithms and asks them to do
          their thing."""
         # returns 4 quality-checked changes

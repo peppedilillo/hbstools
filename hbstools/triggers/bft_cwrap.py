@@ -64,7 +64,6 @@ class BftCWrapper:
     def __call__(
             self,
             xss: np.ndarray[np.int64],
-            bins: Sequence[float] | None = None,
     ) -> Changepoint:
         cs = _Changepoints()
         _, xs_length = xss.shape

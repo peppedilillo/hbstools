@@ -25,8 +25,8 @@ def path_gtis(data_folder: str | Path) -> Path:
 def read_gti_files(data_folder: str | Path) -> list[GTI]:
     def _read_gti_files(gti_path: str | Path) -> list[GTI]:
         """Finds the GTIs."""
-        gtis_hdul = fits.open(gti_path)
-        return [GTI(start, stop) for start, stop in gtis_hdul[1].data]
+        with fits.open(gti_path) as hdul:
+            return [GTI(start, stop) for start, stop in hdul[1].data]
 
     return _read_gti_files(path_gtis(data_folder))
 
@@ -36,8 +36,10 @@ def read_event_files(data_folder: str | Path) -> pd.DataFrame:
         xdata_path: str | Path, sdata_path: str | Path
     ) -> pd.DataFrame:
         """Opens the data files and merges them"""
-        xdata_df = pd.DataFrame(fits.open(xdata_path)[1].data)
-        sdata_df = pd.DataFrame(fits.open(sdata_path)[1].data)
+        with fits.open(xdata_path) as hdul:
+            xdata_df = pd.DataFrame(hdul[1].data)
+        with fits.open(sdata_path) as hdul:
+            sdata_df = pd.DataFrame(hdul[1].data)
         category_quads_t = CategoricalDtype(categories=[0,1,2,3], ordered=True)
         return (
             pd.concat([xdata_df, sdata_df])

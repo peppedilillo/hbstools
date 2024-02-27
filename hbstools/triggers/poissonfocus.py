@@ -7,6 +7,8 @@ from math import inf
 from math import log
 from math import sqrt
 
+from typing import Sequence
+
 
 class Curve:
     """A Poisson-FOCuS curve supporting maximizer optimization."""
@@ -60,13 +62,11 @@ class PoissonFocus:
 
     def __call__(
         self,
-        xs: list[int],
-        bs: list[float],
+        xs: Sequence[int],
     ):
         """
         Args:
             xs: a list of count data
-            bs: a list of background values
 
         Returns:
             A 3-tuple: significance value (std. devs), changepoint,  and

@@ -65,9 +65,10 @@ def get_data(data_folders: Sequence[Path | str]) -> Iterator[tuple[pd.DataFrame,
             yield between(df, gti.start, gti.end), gti
             yield from f(gtis[1:], files, after(df, gti.end))
 
-    all_gtis = [gti for gtis in [read_gti_files(dp) for dp in data_folders] for gti in gtis]
+    sorted_folders = sorted(data_folders, key=lambda d: read_gti_files(d)[0].start)
+    all_gtis = [gti for gtis in [read_gti_files(dp) for dp in sorted_folders] for gti in gtis]
     gtis = merge_overlapping_gtis(all_gtis)
-    return f(gtis, data_folders[1:], read_event_files(data_folders[0]))
+    return f(gtis, sorted_folders[1:], read_event_files(sorted_folders[0]))
 
 
 def filter_energy(

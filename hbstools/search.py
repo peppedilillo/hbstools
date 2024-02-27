@@ -5,10 +5,9 @@ import pandas as pd
 from rich.console import Console
 from rich.progress import track
 
+import hbstools.trigger as trig
 from hbstools.data import get_data
 from hbstools.data import filter_energy
-from hbstools.io import read_gti_files
-from hbstools.trigger import trigger_algorithm
 from hbstools.types import ChangepointMET
 from hbstools.types import GTI
 from hbstools.types import MET
@@ -39,7 +38,7 @@ class Search:
         self.skip = skip
         self.energy_lims = energy_lims
         self.algorithm_params = algorithm_params
-        self.algorithm = trigger_algorithm(algorithm_params)
+        self.algorithm_type = trig.get_algorithm(algorithm_params)
         self.console = console
 
     def __call__(self, dataset: Sequence[Path | str]) -> pd.DataFrame:
@@ -47,26 +46,27 @@ class Search:
 
     def run_on_dataset(
             self,
-            dataset: Sequence[Path | str],
+            folders: Sequence[Path | str],
     ) -> dict[GTI, list[ChangepointMET]]:
         """Runs on every gtis and returns anomalies."""
-        def progressbar(gen: Iterator):
+        def progressbar(gen: Iterator, enabled=False):
             return track(
                 gen,
                 description="[dim cyan](Running..)",
                 transient=True,
                 console=self.console,
-            )
+            ) if enabled else gen
+
+        _get_data = (
+            progressbar(get_data(folders))
+            if self.console
+            else get_data(folders)
+        )
 
         results = {}
-        sorted_folders = sorted(dataset, key=lambda d: read_gti_files(d)[0].start)
-        _get_data = (
-            progressbar(get_data(sorted_folders))
-            if self.console
-            else get_data(sorted_folders)
-        )
+        run = trig.set(self.algorithm_params)
         for data, gti in _get_data:
-            anomalies = self.algorithm()(filter_energy(data, self.energy_lims), gti, self.binning, self.skip)
+            anomalies = run(filter_energy(data, self.energy_lims), gti, self.binning, self.skip)
             results[gti] = anomalies
 
             # fmt: off
