@@ -3,12 +3,12 @@ Ctypes binding to the header of the C implementation of Poisson FOCuS
 with single exponential smoothing background estimate.
 """
 
-
 import ctypes
 import enum
 from typing import Callable
 
 import numpy as np
+import numpy.typing as npt
 
 from hbstools.triggers import _LIBCFOCUS
 from hbstools.types import Changepoint
@@ -53,7 +53,7 @@ class PoissonFocusSesCwrapper:
         self.sleep = sleep
         self._call = self.bind_pfs_interface()
 
-    def __call__(self, xs: np.ndarray[np.int_]) -> Changepoint:
+    def __call__(self, xs: npt.NDArray) -> Changepoint:
         c = _Changepoint()
         xs_length = len(xs)
         xs_pointer = xs.ctypes.data_as(ctypes.POINTER(ctypes.c_long))

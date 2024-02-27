@@ -4,9 +4,10 @@ Ctypes binding to the header of the BFT C implementation.
 
 import ctypes
 import enum
-from typing import Callable, Sequence
+from typing import Callable
 
 import numpy as np
+import numpy.typing as npt
 
 from hbstools.triggers import _LIBCFOCUS
 from hbstools.types import Changepoint
@@ -65,7 +66,7 @@ class BftCWrapper:
 
     def __call__(
         self,
-        xss: np.ndarray[np.int64],
+        xss: npt.NDArray[np.int64],  # shape (4, _)
     ) -> Changepoint:
         cs = _Changepoints()
         _, xs_length = xss.shape

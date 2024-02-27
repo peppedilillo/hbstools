@@ -22,6 +22,8 @@ def _find_suitable_binner(
             return histogram_quadrants
         case pfsc.PoissonFocusSesCwrapper | pfd.PoissonFocusDes:
             return histogram
+        case _:
+            raise ValueError(f"Cannot find a binner for {algorithm}.")
 
 
 def get_algorithm(
@@ -62,6 +64,8 @@ def get_algorithm(
             "majority": _,
         }:
             return bftc.BftCWrapper
+        case _:
+            raise ValueError("Cannot identify a fitting algorithm.")
 
 
 def _run_on_segment(
@@ -104,10 +108,7 @@ def _run_on_segment(
 def set(
     algorithm_params: dict,
 ) -> Callable:
-    """Prepares the algorithm and runs on data.
-
-    The outer layer identifies a suitable algorithm and binner.
-    """
+    """Identifies a suitable algorithm and binner."""
 
     def run(data: pd.DataFrame, gti: GTI, binning, skip: int) -> list[ChangepointMET]:
         """Run the algorithm, restarting each time a trigger is found."""

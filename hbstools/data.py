@@ -83,7 +83,7 @@ def filter_energy(
 
 
 def _histogram(
-    data: Sequence,
+    data: pd.Series,
     start: float,
     stop: float,
     binning: float,
@@ -122,7 +122,7 @@ def histogram_quadrants(
     binning: float,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Bins data in time, separating data from different quadrants."""
-    _, bins = _histogram([], gti.start, gti.end, binning)
+    _, bins = _histogram(pd.Series([]), gti.start, gti.end, binning)
     return (
         np.vstack(
             [

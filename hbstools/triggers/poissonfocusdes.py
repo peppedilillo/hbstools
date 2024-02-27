@@ -8,6 +8,7 @@ from math import sqrt
 from typing import Deque, Sequence
 
 from hbstools.triggers.poissonfocus import PoissonFocus
+from hbstools.types import Changepoint, Change
 
 
 class PoissonFocusDes:
@@ -66,7 +67,7 @@ class PoissonFocusDes:
         self.buffer: Deque = deque([], maxlen=m)
         self.s_t = None
         self.b_t = None
-        self.lambda_t = None
+        self.lambda_t = 0.0
         self.m = m
         self.t_max = t_max
         self.sleep = m + 1 if sleep is None else sleep
@@ -80,7 +81,7 @@ class PoissonFocusDes:
     def __call__(
         self,
         xs: Sequence[int],
-    ):
+    ) -> Changepoint:
         """
         Args:
             xs: a list of count data
@@ -153,7 +154,7 @@ class PoissonFocusDes:
         self.b_t = self.beta * (self.s_t - s_t_1) + (1 - self.beta) * b_t_1
         return self.s_t + self.m * self.b_t
 
-    def qc(self, significance, offset):
+    def qc(self, significance, offset) -> Change:
         """
         quality control.
         runs only if focus is over threshold and t_max is given.
@@ -164,7 +165,7 @@ class PoissonFocusDes:
             return sqrt(2 * significance), offset
         return 0.0, 0
 
-    def step(self, x):
+    def step(self, x) -> Change:
         """Base algorithm step."""
         if self.schedule == "test":
             x_t_m = self.buffer.popleft()
@@ -193,6 +194,7 @@ class PoissonFocusDes:
                 self.des_initialize()
                 self.schedule = "update" if self.sleep else "test"
             return 0.0, 0
+        raise ValueError("Unknown task.")
 
 
 class Debugger:
@@ -229,7 +231,7 @@ class Debugger:
                 return significance, t - offset + 1, t
         return 0.0, t + 1, t
 
-    def log_step(self, bin_: float, t: int, x_t: int, b_t: float):
+    def log_step(self, bin_: float, t: int, x_t: int, b_t: float | None):
         """Logs algorithm step."""
         self.log["timestamps"].append(bin_)
         self.log["ts"].append(t)

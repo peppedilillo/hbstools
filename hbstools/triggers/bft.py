@@ -5,10 +5,10 @@ estimate and triggers if more than half of them are over threshold.
 
 from hbstools.triggers.poissonfocusdes import PoissonFocusDes
 from hbstools.triggers.poissonfocus import PoissonFocus
-from hbstools.types import Changepoint
+from hbstools.types import Changepoint, Change
 
 from typing import Callable
-import numpy as np
+import numpy.typing as npt
 
 _QUADRANTS_NUMBER = 4
 
@@ -50,31 +50,30 @@ class Bft:
             threshold_std, alpha, beta, m, sleep, t_max, mu_min, s_0, b_0, majority
         )
         self.majority = majority
-        self.focusexp_params = {
-            "threshold_std": threshold_std,
-            "alpha": alpha,
-            "beta": beta,
-            "m": m,
-            "sleep": sleep,
-            "mu_min": mu_min,
-            "t_max": t_max,
-            "s_0": s_0,
-            "b_0": b_0,
-        }
         self.fs = [
-            PoissonFocusDes(**self.focusexp_params) for _ in range(_QUADRANTS_NUMBER)
+            PoissonFocusDes(
+                threshold_std=threshold_std,
+                alpha=alpha,
+                beta=beta,
+                m=m,
+                sleep=sleep,
+                mu_min=mu_min,
+                t_max=t_max,
+                s_0=s_0,
+                b_0=b_0,
+            ) for _ in range(_QUADRANTS_NUMBER)
         ]
 
     @fold_changepoints
     def __call__(
         self,
-        xss: np.ndarray[int],
+        xss: npt.NDArray,
     ) -> list[Changepoint]:
-        det_ids = range(xss.shape[0])
-        changes = {}
+        det_ids, _ = xss.shape
+        changes = [(0., 0), (0., 0), (0., 0), (0., 0)]
         t_length = len(xss[0])
         for t in range(t_length):
-            changes = self.step([xss[det_id, t] for det_id in det_ids])
+            changes = self.step([xss[det_id, t] for det_id in range(det_ids)])
             if len([*filter(lambda c: c[0] > 0, changes)]) >= self.majority:
                 break
         return [*map(lambda c: (c[0], t - c[1] + 1, t), changes)]
@@ -97,12 +96,12 @@ class Bft:
             )
         return
 
-    def qc(self, changes: list[Changepoint]) -> list[Changepoint]:
+    def qc(self, changes: list[Change]) -> list[Change]:
         """A quality control step. A change goes through only if its associated
         significance is greater than threshold"""
         return [f.qc(*c) for f, c in zip(self.fs, changes)]
 
-    def step(self, xts: list[int]) -> list[Changepoint]:
+    def step(self, xts: list[int]) -> list[Change]:
         """Basic algorithm step, i.e. call subalgorithms and asks them to do
         their thing."""
         # returns 4 quality-checked changes

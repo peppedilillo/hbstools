@@ -9,14 +9,19 @@ parameters = {
     "m": 5,
     "skip": 10,
 }
-
+_ = "not needed"
 configuration = {
     "binning": 1,
     "skip": 10,
     "energy_lims": (None, None),
     "algorithm_params": {
+        "threshold_std": _,
+        "mu_min": _,
         "alpha": 0.1,
+        "beta": _,
         "m": 5,
+        "t_max": _,
+        "sleep": _,
     },
 }
 

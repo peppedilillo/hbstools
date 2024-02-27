@@ -64,6 +64,7 @@ class PoissonFocus:
     def __call__(
         self,
         xs: Sequence[int],
+        bs: Sequence[float],
     ):
         """
         Args:
