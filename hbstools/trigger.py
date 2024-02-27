@@ -42,13 +42,16 @@ def _run_on_segment(
     skip: int,
 ) -> list[Changepoint]:
     """Runs on binned data restarting the algorithm after skip bin-steps."""
-
     def helper(cs, bs, skip, acc):
         """Recursion helper"""
         match cs.shape:
             case (4, 0):
                 return []
             case (4, _):
+                # NOTE: we call init_algorithm() before launching it on the counts `cs`.
+                # The rationale behind this design is to leave the user the freedom to
+                # decide if some code (e.g., an initializer, a reset signal, whatever)
+                # must run before the algorithm is actually launched on the data.
                 s, cp, tt = init_algorithm()(cs)
                 t = [(s, acc + cp, acc + tt)] if tt >= cp else []
                 return t + helper(cs[:, tt + skip:], bs[tt + skip:], skip, acc + tt + skip)
@@ -68,15 +71,14 @@ def set(
     algorithm_params: dict,
 ) -> Callable:
     """Prepares the algorithm and runs on data.
-    Curried so that you can decide whether to keep using an already initialized
-    algorithm or to initialize it again, without having to identify the right
-    implementation and binner anew.
 
     The outer layer identifies a suitable algorithm and binner.
     """
     def run(data: pd.DataFrame, gti: GTI, binning, skip: int) -> list[ChangepointMET]:
         """Run the algorithm, restarting each time a trigger is found."""
         counts, bins = binner(data, gti, binning)
+        # our choice of lambda implies the algorithm will be reset each time run_on_segment
+        # calls the lambda function.
         cps = _run_on_segment(lambda: algorithm(**algorithm_params), counts, bins, skip)
         # maps bin-steps to MET
         return list(map(lambda cp: (cp[0], bins[cp[1]], bins[cp[2]]), cps))
