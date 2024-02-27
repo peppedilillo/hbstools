@@ -70,7 +70,7 @@ class Bft:
     @fold_changepoints
     def __call__(
         self,
-        xss: npt.NDArray,
+        xss: npt.NDArray,  # shape (4, _)
     ) -> list[Changepoint]:
         det_ids, _ = xss.shape
         changes = [(0.0, 0), (0.0, 0), (0.0, 0), (0.0, 0)]
@@ -99,13 +99,8 @@ class Bft:
             )
         return
 
-    def qc(self, changes: list[Change]) -> list[Change]:
-        """A quality control step. A change goes through only if its associated
-        significance is greater than threshold"""
-        return [f.qc(*c) for f, c in zip(self.fs, changes)]
-
     def step(self, xts: list[int]) -> list[Change]:
         """Basic algorithm step, i.e. call subalgorithms and asks them to do
         their thing."""
         # returns 4 quality-checked changes
-        return self.qc([f.step(x_t) for f, x_t in zip(self.fs, xts)])
+        return [f.step(x_t) for f, x_t in zip(self.fs, xts)]
