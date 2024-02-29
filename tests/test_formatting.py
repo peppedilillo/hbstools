@@ -45,7 +45,6 @@ class TestFormatResult(unittest.TestCase):
     def test_equal(self):
         search = Search(**configuration)
         for x, y in zip(inputs, outputs):
-            print(search.format_result(*x))
             self.assertEqual(search.format_result(*x), y)
 
 

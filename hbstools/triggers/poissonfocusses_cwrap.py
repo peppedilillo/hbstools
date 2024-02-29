@@ -10,7 +10,7 @@ from typing import Callable
 import numpy as np
 import numpy.typing as npt
 
-from hbstools.triggers import _LIBCFOCUS
+from hbstools.triggers import TriggerAlgorithm, _LIBCFOCUS
 from hbstools.types import Changepoint
 
 clib_pfs = ctypes.CDLL(_LIBCFOCUS)
@@ -34,16 +34,21 @@ class _Changepoint(ctypes.Structure):
     ]
 
 
-class PoissonFocusSesCwrapper:
+class PoissonFocusSesCwrapper(TriggerAlgorithm):
     """A wrapper to the C implementation of FOCuS with simple exp. smoothing."""
+
+    def __str__(self):
+        return ":fire:cPF+SES:fire:"
+
+    DPOINTER = np.ctypeslib.ndpointer(dtype=ctypes.c_int64, ndim=1)
 
     def __init__(
         self,
         threshold_std: float,
-        mu_min: float,
         alpha: float,
         m: int,
         sleep: int,
+        mu_min: float = 1.0,
     ):
         self.check_init_parameters(threshold_std, mu_min, alpha, m, sleep)
         self.threshold_std = threshold_std
@@ -53,13 +58,17 @@ class PoissonFocusSesCwrapper:
         self.sleep = sleep
         self._call = self.bind_pfs_interface()
 
-    def __call__(self, xs: npt.NDArray) -> Changepoint:
+    def __call__(
+            self,
+            xs: npt.NDArray[np.int64],  # shape (_, )
+    ) -> Changepoint:
         c = _Changepoint()
         xs_length = len(xs)
         xs_pointer = xs.ctypes.data_as(ctypes.POINTER(ctypes.c_long))
         error_code = self._call(
             ctypes.byref(c),
-            xs_pointer,
+            # TODO: aboid this fucking casting
+            xs.astype(ctypes.c_int64),
             xs_length,
             self.threshold_std,
             self.mu_min,
@@ -109,13 +118,12 @@ class PoissonFocusSesCwrapper:
         ]
         return pfs_check_init_parameters
 
-    @staticmethod
-    def bind_pfs_interface() -> Callable:
+    def bind_pfs_interface(self) -> Callable:
         pfs_interface = clib_pfs.pfs_interface
         pfs_interface.restype = _Errors
         pfs_interface.argtypes = [
             ctypes.POINTER(_Changepoint),
-            ctypes.POINTER(ctypes.c_long),
+            self.DPOINTER,
             ctypes.c_size_t,
             ctypes.c_double,
             ctypes.c_double,

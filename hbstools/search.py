@@ -38,7 +38,7 @@ class Search:
         self.skip = skip
         self.energy_lims = energy_lims
         self.algorithm_params = algorithm_params
-        self.algorithm_type = trig.get_algorithm(algorithm_params)
+        self.algorithm_type = trig.match_algorithm(algorithm_params)
         self.console = console
 
     def __call__(self, dataset: Sequence[Path | str]) -> pd.DataFrame:
@@ -49,39 +49,40 @@ class Search:
         folders: Sequence[Path | str],
     ) -> dict[GTI, list[ChangepointMET]]:
         """Runs on every gtis and returns anomalies."""
-
-        def progressbar(gen: Iterator, enabled=False):
-            return (
-                track(
-                    gen,
-                    description="[dim cyan](Running..)",
-                    transient=True,
-                    console=self.console,
-                )
-                if enabled
-                else gen
+        def pbar(gen: Iterator):
+            """A progress bar."""
+            return track(
+                gen,
+                description="[dim cyan](Running..)",
+                transient=True,
+                console=self.console,
             )
 
-        _get_data = (
-            progressbar(get_data(folders)) if self.console else get_data(folders)
-        )
-
+        _get_data = pbar(get_data(folders)) if self.console else get_data(folders)
         results = {}
         run = trig.set(self.algorithm_params)
         for data, gti in _get_data:
-            anomalies = run(
-                filter_energy(data, self.energy_lims), gti, self.binning, self.skip
-            )
+            if self.console is not None:
+                self.console.log(f"[dim]On GTI {gti.start:.0f}, {gti.end:.0f}..")
+            filtered_data = filter_energy(data, self.energy_lims)
+            try:
+                anomalies = run(filtered_data, gti, self.binning, self.skip)
+            except ValueError:
+                if self.console is not None:
+                    self.console.log(f"[red]Error: invalid algorithm input.[/]")
+                continue
+
             results[gti] = anomalies
 
             # fmt: off
-            if self.console:
-                self.console.log(f"[dim]On GTI chunk {gti.start:.1f}-{gti.end:.1f}..")
-                if anomalies:
-                    self.console.log(f"Found [b]{len(anomalies)}[/] transient{'s' if len(anomalies) > 1 else ''}")
-                    for i, r in enumerate(results[gti], start=1):
-                        self.console.log(
-                            f"[dim]MET time {r[2]:.1f}, GTI+{r[2] - gti.start:.1f}s-{r[2] - gti.start:.1f}s.[/]")
+            if self.console is not None and anomalies:
+                self.console.log(
+                    f"Found [b]{len(anomalies)}[/] transient{'s' if len(anomalies) > 1 else ''}")
+                for i, r in enumerate(results[gti], start=1):
+                    self.console.log(
+                        f"[dim]|- MET {r[2]:1.1f}, "
+                        f"(+{r[2] - gti.start:1.1f} s).[/]"
+                    )
             # fmt: on
         return results
 

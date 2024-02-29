@@ -5,6 +5,7 @@ from typing import Callable
 import click
 from rich.console import Console
 from schema import And  # type: ignore[import-untyped]
+from schema import Optional  # type: ignore[import-untyped]
 from schema import Schema  # type: ignore[import-untyped]
 from schema import SchemaError  # type: ignore[import-untyped]
 from schema import Use  # type: ignore[import-untyped]
@@ -14,6 +15,8 @@ from yaml import YAMLError
 
 from hbstools import Search
 from hbstools.io import write_ttis_to_fits
+from hbstools.trigger import match_algorithm
+
 
 LOGO = """
                         
@@ -75,11 +78,30 @@ skip: 3000
 
 
 algorithm_params:
+ # Different algorithms support different parameters. 
+ # The algorithm we are going to use depends on the parameters you'll select, 
+ # according to this table:
+ # 
+ # |               | Python PF+DES | Python BFT | C PF+SES | C BFT |
+ # |---------------|---------------|------------|----------|-------|
+ # | threshold_std |       ✓       |      ✓     |     ✓    |   ✓   |
+ # | mu_min        |       ✓       |      ✓     |     ✓    |   ✓   |
+ # | alpha         |       ✓       |      ✓     |     ✓    |   ✓   |
+ # | beta          |       ✓       |      ✓     |          |       |
+ # | m             |       ✓       |      ✓     |     ✓    |   ✓   |
+ # | t_max         |       ✓       |      ✓     |          |       |
+ # | sleep         |       ✓       |      ✓     |     ✓    |   ✓   |
+ # | majority      |               |      ✓     |          |   ✓   |
+ #
+ # NOTE: a successful execution is not guaranteed if your parameters selection
+ # does not meet one of the columns in the above table.
+ # NOTE: `t_max` and `beta` are commented by default.
+
  # The `threshold` keyword sets the confidence level for detection.
  # The higher the threshold, the less false positive but the more false negative.
  # The threshold is expressed in units of standard deviations.
  # Must be greater than 0.
- threshold_std: 5.5
+ threshold_std: 4.5
 
  # The `mu_min` key seta focus parameter for killing old changepoints 
  # which most likely will never result in a trigger. Keep it below 1.5.
@@ -95,7 +117,7 @@ algorithm_params:
  # The algorithm may become unstable when `beta` is set: leave it `0.0` unless
  # you have good reasons to use it.
  # Must be greater than 0.
- beta: 0.0
+ # beta: 0.0
 
  # The `m` keyword will prevent the most recent observed count to be used for 
  # background estimation. This prevents background estimate to be "polluted"
@@ -109,7 +131,7 @@ algorithm_params:
  # The `t_max` parameter tells the algorithm to kill old changepoint.
  # It is a good idea to keep it equal to `m`. Also expressed as a bin-step.
  # Must be a positive integer.
- t_max: 40
+ # t_max: 40
 
  # The algorithms stays idle for a while before startin its operations.
  # This help forming a good estimate of the background. 
@@ -119,6 +141,11 @@ algorithm_params:
  # Must be a non-negative integer.
  sleep: 120
  
+ # Running one of the BFT algorithms you may select how many detectors must
+ # be simultaneously over threshold for a trigger to pass through.
+ # This is done specifying the `majority` parameter.
+ # Must be an integer comprised between 1 and 4 (included).
+ majority: 3
  """
 
 
@@ -132,7 +159,7 @@ def _default_config() -> tuple[Callable, Callable]:
             return DEFAULT_CONFIG
 
     def tell() -> bool:
-        """Tells if default config was ever called"""
+        """A sentinel. It tells if default config was ever called"""
         return called_yet[0]
 
     called_yet = [False]
@@ -142,20 +169,7 @@ def _default_config() -> tuple[Callable, Callable]:
 default_config, used_default_config = _default_config()
 
 
-class ConfigSchema(Schema):
-    """A schema used in validation of mercury's configuration files."""
-
-    def validate(self, data, _is_event_schema=True):
-        data = super(ConfigSchema, self).validate(data, _is_event_schema=False)
-        if (
-            _is_event_schema
-            and data["algorithm_params"]["sleep"] <= data["algorithm_params"]["m"]
-        ):
-            raise SchemaError("`sleep` must be strictly greater than `m`.")
-        return data
-
-
-config_schema = ConfigSchema(
+config_schema = Schema(
     {
         "binning": And(
             Use(float),
@@ -181,7 +195,7 @@ config_schema = ConfigSchema(
                 lambda a: a > 0,
                 error="`alpha` must be positive",
             ),
-            "beta": And(
+            Optional("beta"): And(
                 Use(float),
                 lambda b: b >= 0,
                 error="`beta` must be non-negative",
@@ -199,9 +213,13 @@ config_schema = ConfigSchema(
                 lambda sleep: isinstance(sleep, int) & (not sleep < 0),
                 error="`sleep` must be a non-negative integer.",
             ),
-            "t_max": And(
+            Optional("t_max"): And(
                 lambda t_max: isinstance(t_max, int) & (not t_max < 1),
-                error="`t_max must be a positive integer.",
+                error="`t_max` must be a positive integer.",
+            ),
+            "majority": And(
+                lambda maj: isinstance(maj, int) & (not maj < 1) & (not maj > 4),
+                error="`majority` must be an integer between 1 and 4 (included).",
             ),
         },
     },
@@ -285,19 +303,29 @@ def search_validate_config(
     """Validates user configuration option and records it."""
 
     def validate_config(config_path: Path | None) -> dict:
+        """Checks that the YAML is well written, with well-defined values."""
         config = parse_user_else_default_config(config_path)
         config_schema.validate(config)
         return config
 
     try:
-        configuration = validate_config(value)
+        config = validate_config(value)
     except YAMLError:
         raise click.BadParameter("Cannot parse YAML configuration file.")
     except SchemaError as error:
-        raise click.BadParameter(f"Wrong inputs in config file:\n - {error}")
+        raise click.BadParameter(f"Wrong inputs in config file: \n - {error}")
 
+    # check if we have an algorithm matching the user configuration.
+    algorithm_params = config["algorithm_params"]
+    try:
+        algorithm_class = match_algorithm(algorithm_params)
+    except ValueError:
+        raise click.BadParameter("Cannot find an algorithm matching the configuration.")
+
+    # store the algorithm name so that we can show it during execution.
+    ctx.obj["search_algoname"] = str(algorithm_class(**algorithm_params))
     ctx.obj["search_config"] = None if used_default_config() else value
-    return configuration
+    return config
 
 
 def validate_output(output: Path, filename: str) -> Path:
@@ -387,26 +415,33 @@ def search(
     def fmt_filename(filename: str | Path) -> str:
         return f"'[b]{filename}[/]'"
 
+    # fmt: off
     console = init_console(with_logo=True)
     console.print(f"Welcome, this is [bold]mercury.search[/].\n")
     config_file = "default" if (f := ctx.obj["search_config"]) is None else f
     console.log(f"Loaded {fmt_filename(config_file)} configuration.")
+    console.log(f"Algorithm {ctx.obj['search_algoname']} matches the configuration.")
 
     search_targets = ["gti.fits", "out_s_cl.evt", "out_x_cl.evt"]
     dataset = crawler(input_directory, search_targets, recursion_limit)
     if not dataset:
         console.print("\nFound no data. Exiting.\n")
         return
-    else:
-        console.log(f"Found {len(dataset)} dataset.")
+    console.log(f"Found {len(dataset)} data folder{'' if len(dataset) == 1 else 's'}.")
 
+    console.log("Starting search.")
     _search = Search(**configuration, console=console)
     ttis = _search(dataset)
 
-    write_ttis_to_fits(ttis, output_path)
+    if ttis.empty:
+        console.print("\nNo results to save. Exiting.\n")
+        return
+
     console.log(f"Writing to {fmt_filename(output_path)}.")
+    write_ttis_to_fits(ttis, output_path)
 
     console.print("\nDone.\n")
+    # fmt: on
     return
 
 

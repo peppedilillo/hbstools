@@ -7,6 +7,7 @@ from typing import Callable
 
 import numpy.typing as npt
 
+from hbstools.triggers import TriggerAlgorithm
 from hbstools.triggers.poissonfocus import PoissonFocus
 from hbstools.triggers.poissonfocusdes import PoissonFocusDes
 from hbstools.types import Change
@@ -30,10 +31,12 @@ def fold_changepoints(func: Callable):
     return wrapper
 
 
-class Bft:
+class Bft(TriggerAlgorithm):
     """BFT stands for Big Focus Trigger :^). It is a manager of multiple,
     independent FOCuS algorithms, with autonoumous background estimate by
     double exponential smoothing."""
+    def __str__(self):
+        return "BFT"
 
     def __init__(
         self,
@@ -43,10 +46,10 @@ class Bft:
         m: int,
         sleep: int,
         mu_min: float = 1.0,
+        majority: int = 3,
         t_max: int | None = None,
         s_0: float | None = None,
         b_0: float | None = None,
-        majority: int = 3,
     ):
         self.check_init_parameters(
             threshold_std, alpha, beta, m, sleep, t_max, mu_min, s_0, b_0, majority
@@ -83,7 +86,7 @@ class Bft:
 
     @staticmethod
     def check_init_parameters(
-        threshold_std, alpha, beta, m, sleep, t_max, mu_min, s_0, b_0, majority
+        threshold_std, alpha, beta, m, sleep, mu_min, majority, t_max, s_0, b_0,
     ):
         """Checks validity of initialization arguments."""
         PoissonFocus.check_init_parameters(

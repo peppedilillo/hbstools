@@ -9,7 +9,7 @@ from typing import Callable
 import numpy as np
 import numpy.typing as npt
 
-from hbstools.triggers import _LIBCFOCUS
+from hbstools.triggers import TriggerAlgorithm, _LIBCFOCUS
 from hbstools.types import Changepoint
 
 clib_bft = ctypes.CDLL(_LIBCFOCUS)
@@ -41,19 +41,22 @@ class _Changepoints(ctypes.Structure):
     _fields_ = [("changepoints", _Changepoint * NUMDETECTOR)]
 
 
-class BftCWrapper:
+class BftCWrapper(TriggerAlgorithm):
     """A wrapper to the C implementation of the BFT."""
 
     NDPOINTER = np.ctypeslib.ndpointer(dtype=ctypes.c_int64, ndim=2)
 
+    def __str__(self):
+        return ":fire:cBFT:fire:"
+
     def __init__(
         self,
         threshold_std: float,
-        mu_min: float,
         alpha: float,
         m: int,
         sleep: int,
-        majority: int,
+        mu_min: float = 1.0,
+        majority: int = 3,
     ):
         self.check_init_parameters(threshold_std, mu_min, alpha, m, sleep, majority)
         self.threshold_std = threshold_std
@@ -66,13 +69,13 @@ class BftCWrapper:
 
     def __call__(
         self,
-        xss: npt.NDArray[ctypes.c_int64],  # shape (4, _)
+        xss: npt.NDArray[np.int64],  # shape (4, _)
     ) -> Changepoint:
         cs = _Changepoints()
         _, xs_length = xss.shape
         error_code = self._call(
             ctypes.byref(cs),
-            # TODO: how do i avoid this fucking casting
+            # TODO: avoid this fucking casting
             xss.astype(ctypes.c_int64),
             xs_length,
             self.threshold_std,

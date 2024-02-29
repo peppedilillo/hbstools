@@ -7,16 +7,19 @@ from collections import deque
 from math import sqrt
 from typing import Deque, Sequence
 
+from hbstools.triggers import TriggerAlgorithm
 from hbstools.triggers.poissonfocus import PoissonFocus
 from hbstools.types import Change
 from hbstools.types import Changepoint
 
 
-class PoissonFocusDes:
+class PoissonFocusDes(TriggerAlgorithm):
     """
     A wrapper to Poisson-FOCuS implementing background estimate via double
     exponential smoothing.
     """
+    def __str__(self):
+        return "PF+DES"
 
     def __init__(
         self,

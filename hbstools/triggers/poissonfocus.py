@@ -8,6 +8,8 @@ from math import log
 from math import sqrt
 from typing import Sequence
 
+from hbstools.triggers import TriggerAlgorithm
+
 
 class Curve:
     """A Poisson-FOCuS curve supporting maximizer optimization."""
@@ -35,11 +37,14 @@ def dominate(p, q, acc):
     return +1 if area > 0 else -1
 
 
-class PoissonFocus:
+class PoissonFocus(TriggerAlgorithm):
     """
     An implementation of Poisson-FOCuS with optimizations,
     see Ward et al., 2023. or Dilillo et al., 2024
     """
+
+    def __str__(self):
+        return "PF"
 
     def __init__(
         self,

@@ -108,6 +108,6 @@ If you didn't, activate your local environment instead.
 | alpha         |       ✓       |      ✓     |     ✓    |   ✓   |
 | beta          |       ✓       |      ✓     |          |       |
 | m             |       ✓       |      ✓     |     ✓    |   ✓   |
-| t_max         |       ✓       |      ✓     |     *    |   *   |
+| t_max         |       ✓       |      ✓     |          |       |
 | sleep         |       ✓       |      ✓     |     ✓    |   ✓   |
 | majority      |               |      ✓     |          |   ✓   |

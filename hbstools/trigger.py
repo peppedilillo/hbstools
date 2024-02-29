@@ -29,7 +29,7 @@ def _find_suitable_binner(
             raise ValueError(f"Cannot find a binner for {algorithm}.")
 
 
-def get_algorithm(
+def match_algorithm(
     algorithm_params: dict,
 ) -> Type[
     pfd.PoissonFocusDes | bft.Bft | pfsc.PoissonFocusSesCwrapper | bftc.BftCWrapper
@@ -39,36 +39,47 @@ def get_algorithm(
     match algorithm_params:
         case {
             "threshold_std": _,
-            "mu_min": _,
             "alpha": _,
             "beta": _,
             "m": _,
-            "t_max": _,
             "sleep": _,
+            "mu_min": _,
             "majority": _,
+            "t_max": _,
         }:
             return bft.Bft
         case {
             "threshold_std": _,
-            "mu_min": _,
             "alpha": _,
             "beta": _,
             "m": _,
-            "t_max": _,
             "sleep": _,
+            "mu_min": _,
+            "t_max": _,
         }:
             return pfd.PoissonFocusDes
         case {
             "threshold_std": _,
-            "mu_min": _,
             "alpha": _,
             "m": _,
             "sleep": _,
+            "mu_min": _,
             "majority": _,
         }:
             return bftc.BftCWrapper
+        case {
+            "threshold_std": _,
+            "alpha": _,
+            "m": _,
+            "sleep": _,
+            "mu_min": _,
+        }:
+            return pfsc.PoissonFocusSesCwrapper
         case _:
-            raise ValueError("Cannot identify a fitting algorithm.")
+            raise ValueError(
+                "Cannot identify a fitting algorithm.\n" 
+                "Check your configuration!"
+            )
 
 
 def _run_on_segment(
@@ -112,8 +123,7 @@ def set(
     algorithm_params: dict,
 ) -> Callable:
     """Identifies a suitable algorithm and binner."""
-
-    def run(data: pd.DataFrame, gti: GTI, binning, skip: int) -> list[ChangepointMET]:
+    def run(data: pd.DataFrame, gti: GTI, binning: float, skip: int) -> list[ChangepointMET]:
         """Run the algorithm, restarting each time a trigger is found."""
         counts, bins = binner(data, gti, binning)
         # our choice of lambda implies the algorithm will be reset each time run_on_segment
@@ -122,6 +132,6 @@ def set(
         # maps bin-steps to MET
         return list(map(lambda cp: (cp[0], bins[cp[1]], bins[cp[2]]), cps))
 
-    algorithm = get_algorithm(algorithm_params)
+    algorithm = match_algorithm(algorithm_params)
     binner = _find_suitable_binner(algorithm)
     return run

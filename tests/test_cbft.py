@@ -1,7 +1,7 @@
 import unittest
 
 from hbstools import Search
-from hbstools.trigger import get_algorithm
+from hbstools.trigger import match_algorithm
 import hbstools.triggers.bft_cwrap as bftc
 from hbstools.types import GTI
 
@@ -24,7 +24,7 @@ algorithm_params = {
 
 class TestCBFT(unittest.TestCase):
     def test_is_found(self):
-        algorithm = get_algorithm(algorithm_params)
+        algorithm = match_algorithm(algorithm_params)
         self.assertTrue(algorithm is bftc.BftCWrapper)
 
     def test_it_runs(self):
