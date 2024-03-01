@@ -1,4 +1,5 @@
 from functools import wraps
+from typing import Callable
 
 import pandas as pd
 
@@ -58,7 +59,8 @@ def _format(
     preinterva_ends_seconds: float,  # (binning * m)
     postinterval_duration_seconds: float,  # binning / alpha
     postinterval_start_seconds: float,  # binning * skip
-):
+) -> Callable:
+    """Sets the duration and extremes for a TTI's pre- and post- trigger interval."""
     def _format_result(
         result: ChangepointMET,
         gti: GTI,
@@ -89,6 +91,7 @@ def _format(
 
 
 def as_dataframe(func):
+    """Transforms a TTI list to a pandas Dataframe"""
     @wraps(func)
     def wrapper(*args, **kwargs) -> pd.DataFrame:
         return pd.DataFrame(
@@ -106,6 +109,8 @@ def format_results(
     preinterva_ends_seconds: float,  # (binning * m)
     postinterval_start_seconds: float,  # binning * skip
 ) -> list[TTI]:
+    """Transforms the triggers changepoints to a list of TTI obeying the rule
+    that a TTI must always be comprised in a GTI."""
     format_result = _format(
         intervals_duration_seconds,
         preinterva_ends_seconds,
