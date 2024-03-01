@@ -112,7 +112,7 @@ class Bft(TriggerAlgorithm):
 
     def _step(self, det_id: int, xts) -> Change:
         """Runs a single algorithms if it has been working so far,
-         then annotates if an error occurs. Returns a trivial change"""
+        then annotates if an error occurs. Returns a trivial change"""
         if not self.quadrantmask[det_id]:
             return 0.0, 0
         try:

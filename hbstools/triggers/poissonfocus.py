@@ -61,7 +61,7 @@ class PoissonFocus(TriggerAlgorithm):
 
         Optional arguments are implied off by default.
         """
-        self.ab_crit = 1 if mu_min == 1. else (mu_min - 1.) / log(mu_min)
+        self.ab_crit = 1 if mu_min == 1.0 else (mu_min - 1.0) / log(mu_min)
         self.threshold_llr = threshold_std**2 / 2
         self.global_max = 0.0
         self.time_offset = 0
