@@ -75,13 +75,13 @@ For more informations on these parameters, try `mercury --drop .`.
 
 ![bft](assets/bft.png)
 
-The BFT (Big _FOCuS_ Trigger) is our top algorithm right now.
+The BFT (Big _FOCuS_ Trigger) is our "flagship" algorithm right now.
 It is a C implementantion of four Poisson-FOCuS algorithm with automatic 
-background estimate by single exponential smoothing. All algorithms works independetly
-from each other, over data from different detectors. A trigger pass through only if 
+background estimate by single exponential smoothing. All algorithms work independently
+of each other, over data from different detectors. A trigger pass through only if 
 a commandable number of trigger algorithm (majority vote) are found over threshold at the 
-same time. If bad data are passed to one of the algorithms, the algorithm is shut down but
-BFT keeps running until it cans (i.e., untile corrupted algorithms are less than voting majority)
+same time. If bad data are passed to one of the algorithms, that algorithm is shut down, but
+BFT keeps running until the number of corrupted algorithms are less than the voting majority.
 
 
 # Mercury
