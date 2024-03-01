@@ -53,11 +53,15 @@ class PoissonFocus(TriggerAlgorithm):
     ):
         """
         Args:
-            threshold_std: threshold value in standard deviations.
-            mu_min: mumin value.
+            threshold_std: Threshold value in standard deviations.
+            Must be a positive number.
+            mu_min: Kills old changepoints and keep amortized memory costant,
+            at cost of a loss of sensitivity.
+            Must be greater than 1.
+
+        Optional arguments are implied off by default.
         """
-        self.check_init_parameters(threshold_std, mu_min)
-        self.ab_crit = 1 if mu_min == 1 else (mu_min - 1) / log(mu_min)
+        self.ab_crit = 1 if mu_min == 1. else (mu_min - 1.) / log(mu_min)
         self.threshold_llr = threshold_std**2 / 2
         self.global_max = 0.0
         self.time_offset = 0
@@ -89,15 +93,6 @@ class PoissonFocus(TriggerAlgorithm):
             if self.global_max > self.threshold_llr:
                 return sqrt(2 * self.global_max), -self.time_offset + t + 1, t
         return 0.0, t + 1, t
-
-    @staticmethod
-    def check_init_parameters(threshold_std, mu_min):
-        """Checks validity of initialization arguments."""
-        if mu_min < 1:
-            raise ValueError("mumin must be greater or equal 1.0")
-        if threshold_std <= 0:
-            raise ValueError("threshold must be greater than 0.")
-        return
 
     def update(self, x, b):
         """Poisson-FOCuS update step."""

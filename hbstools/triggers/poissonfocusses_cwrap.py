@@ -51,6 +51,21 @@ class PoissonFocusSesCwrapper(TriggerAlgorithm):
         sleep: int,
         mu_min: float = 1.0,
     ):
+        """
+        Args:
+            threshold_std:  In standard deviation units.
+            Must be greater than 0.
+            alpha: DES alpha (value) parameter.
+            Must be greater than 0.
+            m: background estimate delay and forecast length.
+            Must be a positive integer.
+            sleep: dead time for automated s_0 initialization.
+            Must be a non-negative integer.
+            mu_min: FOCuS mu_min parameter. Defaults to 1.
+            Must not be smaller than 1.0
+
+        Optional arguments are implied off by default.
+        """
         self.check_init_parameters(threshold_std, mu_min, alpha, m, sleep)
         self.threshold_std = threshold_std
         self.mu_min = mu_min

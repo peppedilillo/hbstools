@@ -34,7 +34,7 @@ class Bft(TriggerAlgorithm):
     independent FOCuS algorithms, with autonoumous background estimate by
     double exponential smoothing."""
 
-    QUADRANTS_NUMBER = 4
+    DETECTOR_NUMBER = 4
 
     def __str__(self):
         return "BFT"
@@ -46,17 +46,39 @@ class Bft(TriggerAlgorithm):
         beta: float,
         m: int,
         sleep: int,
+        majority: int,
         mu_min: float = 1.0,
-        majority: int = 3,
         t_max: int | None = None,
         s_0: float | None = None,
         b_0: float | None = None,
     ):
-        self.check_init_parameters(
-            threshold_std, alpha, beta, m, sleep, t_max, mu_min, s_0, b_0, majority
-        )
+        """
+        Args:
+            threshold_std:  In standard deviation units.
+            Must be greater than 0.
+            alpha: DES alpha (value) parameter.
+            Must be greater than 0.
+            beta: DES beta (slope) parameter.
+            Must be non-negative.
+            m: background estimate delay and forecast length.
+            Must be a positive integer.
+            sleep: dead time for automated s_0 initialization.
+            Must be a non-negative integer.
+            majority: Sets minimum number of dets. over threshold for trigger.
+            Must be comprised between 1 and self.DETECTOR_NUMBER.
+            mu_min: FOCuS mu_min parameter.
+            Must not be smaller than 1.0
+            t_max:  Maximum changepoint duration, for quality control.
+            Must be a positive integer.
+            s_0: DES init count rate parameter.
+            Must be greater than zero.
+            b_0: DES init slope parameter.
+            Must be a non-negative number, set to 0.
+
+        Optional arguments are set off by default.
+        """
         self.majority = majority
-        self.quadrantmask = [1 for i in range(self.QUADRANTS_NUMBER)]
+        self.quadrantmask = [1 for i in range(self.DETECTOR_NUMBER)]
         self.fs = [
             PoissonFocusDes(
                 threshold_std=threshold_std,
@@ -69,7 +91,7 @@ class Bft(TriggerAlgorithm):
                 s_0=s_0,
                 b_0=b_0,
             )
-            for _ in range(self.QUADRANTS_NUMBER)
+            for _ in range(self.DETECTOR_NUMBER)
         ]
 
     @fold_changepoints
@@ -77,7 +99,7 @@ class Bft(TriggerAlgorithm):
         self,
         xss: npt.NDArray,  # shape (4, _)
     ) -> list[Changepoint]:
-        assert len(xss) == self.QUADRANTS_NUMBER
+        assert len(xss) == self.DETECTOR_NUMBER
         changes = [(0.0, 0), (0.0, 0), (0.0, 0), (0.0, 0)]
         t_length = len(xss[0])
         for t in range(t_length):
@@ -87,31 +109,6 @@ class Bft(TriggerAlgorithm):
             elif len([*filter(lambda c: c[0] > 0, changes)]) >= self.majority:
                 break
         return [*map(lambda c: (c[0], t - c[1] + 1, t), changes)]
-
-    def check_init_parameters(
-        self,
-        threshold_std,
-        alpha,
-        beta,
-        m,
-        sleep,
-        mu_min,
-        majority,
-        t_max,
-        s_0,
-        b_0,
-    ):
-        """Checks validity of initialization arguments."""
-        PoissonFocus.check_init_parameters(
-            threshold_std,
-            mu_min,
-        )
-        PoissonFocusDes.check_init_parameters(
-            threshold_std, alpha, beta, m, sleep, mu_min, t_max, s_0, b_0
-        )
-        if majority < 1 or majority > self.QUADRANTS_NUMBER:
-            raise ValueError("majority should be comprised between 1 and `detector_number`")
-        return
 
     def _step(self, det_id: int, xts) -> Change:
         """Runs a single algorithms if it has been working so far,
@@ -129,4 +126,4 @@ class Bft(TriggerAlgorithm):
         """Basic algorithm step, i.e. call subalgorithms and asks them to do
         their thing."""
         # returns 4 quality-checked changes
-        return [self._step(det_id, xts) for det_id in range(self.QUADRANTS_NUMBER)]
+        return [self._step(det_id, xts) for det_id in range(self.DETECTOR_NUMBER)]

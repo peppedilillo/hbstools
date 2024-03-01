@@ -56,9 +56,26 @@ class BftCWrapper(TriggerAlgorithm):
         alpha: float,
         m: int,
         sleep: int,
+        majority: int,
         mu_min: float = 1.0,
-        majority: int = 3,
     ):
+        """
+        Args:
+            threshold_std:  In standard deviation units.
+            Must be greater than 0.
+            alpha: DES alpha (value) parameter.
+            Must be greater than 0.
+            m: background estimate delay and forecast length.
+            Must be a positive integer.
+            sleep: dead time for automated s_0 initialization.
+            Must be a non-negative integer.
+            mu_min: FOCuS mu_min parameter.
+            Must not be smaller than 1.0
+            majority: Sets minimum number of dets. over threshold for a trigger.
+            Must be comprised between 1 and self.DETECTOR_NUMBER
+
+        Optional arguments are set off by default.
+        """
         self.check_init_parameters(threshold_std, mu_min, alpha, m, sleep, majority)
         self.threshold_std = threshold_std
         self.mu_min = mu_min

@@ -100,9 +100,10 @@ algorithm_params:
  # Must be greater than 0.
  threshold_std: 4.5
 
- # The `mu_min` key seta focus parameter for killing old changepoints 
- # which most likely will never result in a trigger. Keep it below 1.5.
- # Must be greater than 1.
+ # The `mu_min` key set a focus parameter for killing old changepoints, which 
+ # most likely will never result in a trigger. 
+ # Not used if equal 1.0, keep it below 1.5.
+ # Must not be smaller than 1.
  mu_min: 1.1
  
  # The `alpha` keyword sets the background smoothing characteristic time tau,
@@ -111,9 +112,9 @@ algorithm_params:
  alpha: 0.005
 
  # The `beta` keyword sets the trend component for background estimate.
- # The algorithm may become unstable when `beta` is set: leave it `0.0` unless
- # you have good reasons to use it.
- # Must be greater than 0.
+ # The algorithm may become unstable when `beta` is set: keep it off (0.0) 
+ # unless you have good reasons to turn it on.
+ # Must be non-negative.
  # beta: 0.0
 
  # The `m` keyword will prevent the most recent observed count to be used for 
