@@ -1,6 +1,6 @@
 from math import isclose
 from pathlib import Path
-from typing import Iterator, Sequence
+from typing import Iterable, Sequence
 
 import numpy as np
 import pandas as pd
@@ -35,7 +35,7 @@ def merge_overlapping_gtis(gtis: list[GTI], tolerance: float = 1.0) -> list[tupl
     return f(gtis)
 
 
-def get_data(data_folders: Sequence[Path | str]) -> Iterator[tuple[pd.DataFrame, GTI]]:
+def get_data(data_folders: Sequence[Path | str]) -> Iterable[tuple[pd.DataFrame, GTI]]:
     """A generator which will get you one GTI dataframe a time."""
 
     def after(df, time):

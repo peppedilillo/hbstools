@@ -29,7 +29,7 @@ def _find_suitable_binner(
             raise ValueError(f"Cannot find a binner for {algorithm}.")
 
 
-def match_algorithm(
+def trigger_match(
     algorithm_params: dict,
 ) -> Type[
     pfd.PoissonFocusDes | bft.Bft | pfsc.PoissonFocusSesCwrapper | bftc.BftCWrapper
@@ -82,7 +82,7 @@ def match_algorithm(
             )
 
 
-def _run_on_segment(
+def trigger_counts_run(
     init_algorithm: Callable,
     counts: np.ndarray,
     bins: np.ndarray,
@@ -119,19 +119,22 @@ def _run_on_segment(
     return helper(counts, bins, skip, 0)
 
 
-def set(
+def trigger_df_set(
+    binning: float,
+    skip: int,
     algorithm_params: dict,
 ) -> Callable:
     """Identifies a suitable algorithm and binner."""
-    def run(data: pd.DataFrame, gti: GTI, binning: float, skip: int) -> list[ChangepointMET]:
+    def trigger_df_run(data: pd.DataFrame, gti: GTI) -> list[ChangepointMET]:
         """Run the algorithm, restarting each time a trigger is found."""
         counts, bins = binner(data, gti, binning)
         # our choice of lambda implies the algorithm will be reset each time run_on_segment
         # calls the lambda function.
-        cps = _run_on_segment(lambda: algorithm(**algorithm_params), counts, bins, skip)
+        cps = trigger_counts_run(lambda: algorithm(**algorithm_params), counts, bins, skip)
         # maps bin-steps to MET
         return list(map(lambda cp: (cp[0], bins[cp[1]], bins[cp[2]]), cps))
 
-    algorithm = match_algorithm(algorithm_params)
+    algorithm = trigger_match(algorithm_params)
+    # TODO: define a binner as an histogram with defined binning
     binner = _find_suitable_binner(algorithm)
-    return run
+    return trigger_df_run

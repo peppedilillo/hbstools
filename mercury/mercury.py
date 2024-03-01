@@ -13,9 +13,7 @@ from yaml import dump as write_yaml
 from yaml import safe_load as read_yaml
 from yaml import YAMLError
 
-from hbstools import Search
-from hbstools.io import write_ttis_to_fits
-from hbstools.trigger import match_algorithm
+import hbstools as hbs
 
 
 LOGO = """
@@ -318,7 +316,7 @@ def search_validate_config(
     # check if we have an algorithm matching the user configuration.
     algorithm_params = config["algorithm_params"]
     try:
-        algorithm_class = match_algorithm(algorithm_params)
+        algorithm_class = hbs.trigger.trigger_match(algorithm_params)
     except ValueError:
         raise click.BadParameter("Cannot find an algorithm matching the configuration.")
 
@@ -427,18 +425,16 @@ def search(
     if not dataset:
         console.print("\nFound no data. Exiting.\n")
         return
+
     console.log(f"Found {len(dataset)} data folder{'' if len(dataset) == 1 else 's'}.")
 
-    console.log("Starting search.")
-    _search = Search(**configuration, console=console)
-    ttis = _search(dataset)
-
+    ttis = hbs.search(dataset, configuration, console=console)
     if ttis.empty:
         console.print("\nNo results to save. Exiting.\n")
         return
 
     console.log(f"Writing to {fmt_filename(output_path)}.")
-    write_ttis_to_fits(ttis, output_path)
+    hbs.io.write_ttis_to_fits(ttis, output_path)
 
     console.print("\nDone.\n")
     # fmt: on
