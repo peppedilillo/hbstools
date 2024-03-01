@@ -52,6 +52,38 @@ From terminal run:
 If you are using poetry for other projects refer to [this link](https://python-poetry.org/docs/managing-environments/#deleting-the-environments) instead.
 The latter step is only required if you installed with Anaconda.
 
+# Algorithms
+With HBStools come multiple implementation of Poisson-FOCuS and background estimators.
+Some of these were designed for speed, other for flexibility, other for visualization and debugging. 
+The algorithm choice depends on your selection of the configuration parameters, which must
+meet one of the column in this table:
+
+|               | Python PF+DES | Python BFT | C PF+SES | C BFT |
+|---------------|---------------|------------|----------|-------|
+| threshold_std |       ✓       |      ✓     |     ✓    |   ✓   |
+| mu_min        |       ✓       |      ✓     |     ✓    |   ✓   |
+| alpha         |       ✓       |      ✓     |     ✓    |   ✓   |
+| beta          |       ✓       |      ✓     |          |       |
+| m             |       ✓       |      ✓     |     ✓    |   ✓   |
+| t_max         |       ✓       |      ✓     |          |       |
+| sleep         |       ✓       |      ✓     |     ✓    |   ✓   |
+| majority      |               |      ✓     |          |   ✓   |
+
+For more informations on these parameters, try `mercury --drop .`.
+
+### BFT9000
+
+![bft](assets/bft.png)
+
+The BFT (Big _FOCuS_ Trigger) is our top algorithm right now.
+It is a C implementantion of four Poisson-FOCuS algorithm with automatic 
+background estimate by single exponential smoothing. All algorithms works independetly
+from each other, over data from different detectors. A trigger pass through only if 
+a commandable number of trigger algorithm (majority vote) are found over threshold at the 
+same time. If bad data are passed to one of the algorithms, the algorithm is shut down but
+BFT keeps running until it cans (i.e., untile corrupted algorithms are less than voting majority)
+
+
 # Mercury
 ![mercury](assets/mercury-gif/mercury.gif)
 
@@ -85,7 +117,7 @@ Using `mercury search . -o myresults-filename.fits` you will change the output f
 > ❗ **To get help with mercury run `mercury --help`.**
 > To get help on a particular command, such as `search`, you call `mercury search --help`.
 
-### Demo dataset
+## Demo dataset
 We have uploaded a demo dataset [online](https://drive.google.com/file/d/1kC473-QQsLWrClxKRHT8JJCIJr_KO_4_/view?usp=sharing).
 Download the archive and unzip it then, from terminal:
 
@@ -95,19 +127,3 @@ Download the archive and unzip it then, from terminal:
 
 This supposing you installed `hbstools` with Anaconda. 
 If you didn't, activate your local environment instead.
-
-## Trigger algorithms
-
-|               | Python PF+DES | Python BFT | C PF+SES | C BFT |
-|---------------|---------------|------------|----------|-------|
-| binning       |       ✓       |      ✓     |     ✓    |   ✓   |
-| energy_lims   |       ✓       |      ✓     |     ✓    |   ✓   |
-| skip          |       ✓       |      ✓     |     ✓    |   ✓   |
-| threshold_std |       ✓       |      ✓     |     ✓    |   ✓   |
-| mu_min        |       ✓       |      ✓     |     ✓    |   ✓   |
-| alpha         |       ✓       |      ✓     |     ✓    |   ✓   |
-| beta          |       ✓       |      ✓     |          |       |
-| m             |       ✓       |      ✓     |     ✓    |   ✓   |
-| t_max         |       ✓       |      ✓     |          |       |
-| sleep         |       ✓       |      ✓     |     ✓    |   ✓   |
-| majority      |               |      ✓     |          |   ✓   |
