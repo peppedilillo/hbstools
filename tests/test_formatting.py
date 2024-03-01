@@ -3,11 +3,10 @@ import unittest
 from hbstools.format import format_results
 from hbstools.types import GTI
 
-
 binning = 1
 alpha = 0.1
-skip=10
-m=5
+skip = 10
+m = 5
 
 
 format_params = {
@@ -18,10 +17,10 @@ format_params = {
 
 
 inputs = [
-    { GTI(0, 50): [(0, 20.0, 25.0)]},
-    { GTI(20, 80) : [(0, 40.0, 42.0)]},
-    { GTI(0, 50) : [(0, 6.0, 7.0)]},
-    { GTI(0, 50) : [(0, 47.0, 48.0)]},
+    {GTI(0, 50): [(0, 20.0, 25.0)]},
+    {GTI(20, 80): [(0, 40.0, 42.0)]},
+    {GTI(0, 50): [(0, 6.0, 7.0)]},
+    {GTI(0, 50): [(0, 47.0, 48.0)]},
 ]
 
 outputs = [

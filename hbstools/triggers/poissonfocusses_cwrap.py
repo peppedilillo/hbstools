@@ -10,7 +10,8 @@ from typing import Callable
 import numpy as np
 import numpy.typing as npt
 
-from hbstools.triggers import TriggerAlgorithm, _LIBCFOCUS
+from hbstools.triggers import _LIBCFOCUS
+from hbstools.triggers import TriggerAlgorithm
 from hbstools.types import Changepoint
 
 clib_pfs = ctypes.CDLL(_LIBCFOCUS)
@@ -59,8 +60,8 @@ class PoissonFocusSesCwrapper(TriggerAlgorithm):
         self._call = self.bind_pfs_interface()
 
     def __call__(
-            self,
-            xs: npt.NDArray[np.int64],  # shape (_, )
+        self,
+        xs: npt.NDArray[np.int64],  # shape (_, )
     ) -> Changepoint:
         c = _Changepoint()
         xs_length = len(xs)

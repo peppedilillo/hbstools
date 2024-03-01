@@ -77,8 +77,7 @@ def trigger_match(
             return pfsc.PoissonFocusSesCwrapper
         case _:
             raise ValueError(
-                "Cannot identify a fitting algorithm.\n" 
-                "Check your configuration!"
+                "Cannot identify a fitting algorithm.\n" "Check your configuration!"
             )
 
 
@@ -125,12 +124,15 @@ def trigger_df_set(
     algorithm_params: dict,
 ) -> Callable:
     """Identifies a suitable algorithm and binner."""
+
     def trigger_df_run(data: pd.DataFrame, gti: GTI) -> list[ChangepointMET]:
         """Run the algorithm, restarting each time a trigger is found."""
         counts, bins = binner(data, gti, binning)
         # our choice of lambda implies the algorithm will be reset each time run_on_segment
         # calls the lambda function.
-        cps = trigger_counts_run(lambda: algorithm(**algorithm_params), counts, bins, skip)
+        cps = trigger_counts_run(
+            lambda: algorithm(**algorithm_params), counts, bins, skip
+        )
         # maps bin-steps to MET
         return list(map(lambda cp: (cp[0], bins[cp[1]], bins[cp[2]]), cps))
 

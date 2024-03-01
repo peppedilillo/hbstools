@@ -20,7 +20,7 @@ configuration = {
         "m": 40,
         "sleep": 120,
         "mu_min": 1.1,
-    }
+    },
 }
 
 

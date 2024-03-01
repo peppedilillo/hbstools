@@ -10,17 +10,17 @@ dataset_directory = "./data_100s_stronganomaly60s/"
 TRIGTIME = 60
 gti = GTI(0.0, 100.0)
 configuration = {
-    "binning" : 0.1,
-    "energy_lims" : (20, 300),
-    "skip" : 10,
-    "algorithm_params" : {
+    "binning": 0.1,
+    "energy_lims": (20, 300),
+    "skip": 10,
+    "algorithm_params": {
         "threshold_std": 4.5,
         "mu_min": 1.1,
         "alpha": 0.005,
         "m": 40,
         "sleep": 120,
         "majority": 1,
-    }
+    },
 }
 
 

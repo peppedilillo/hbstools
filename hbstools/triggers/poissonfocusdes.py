@@ -18,6 +18,7 @@ class PoissonFocusDes(TriggerAlgorithm):
     A wrapper to Poisson-FOCuS implementing background estimate via double
     exponential smoothing.
     """
+
     def __str__(self):
         return "PF+DES"
 

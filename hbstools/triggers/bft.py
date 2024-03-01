@@ -35,6 +35,7 @@ class Bft(TriggerAlgorithm):
     """BFT stands for Big Focus Trigger :^). It is a manager of multiple,
     independent FOCuS algorithms, with autonoumous background estimate by
     double exponential smoothing."""
+
     def __str__(self):
         return "BFT"
 
@@ -86,7 +87,16 @@ class Bft(TriggerAlgorithm):
 
     @staticmethod
     def check_init_parameters(
-        threshold_std, alpha, beta, m, sleep, mu_min, majority, t_max, s_0, b_0,
+        threshold_std,
+        alpha,
+        beta,
+        m,
+        sleep,
+        mu_min,
+        majority,
+        t_max,
+        s_0,
+        b_0,
     ):
         """Checks validity of initialization arguments."""
         PoissonFocus.check_init_parameters(
