@@ -11,7 +11,7 @@ m = 5
 
 format_params = {
     "intervals_duration_seconds": binning / alpha,
-    "preinterva_ends_seconds": binning / m,
+    "preinterva_ends_seconds": binning * m,
     "postinterval_start_seconds": binning * skip,
 }
 
