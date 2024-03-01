@@ -5,6 +5,7 @@ from typing import Callable
 import click
 from rich.console import Console
 from schema import And  # type: ignore[import-untyped]
+from schema import Optional  # type: ignore[import-untyped]
 from schema import Schema  # type: ignore[import-untyped]
 from schema import SchemaError  # type: ignore[import-untyped]
 from schema import Use  # type: ignore[import-untyped]
@@ -12,8 +13,7 @@ from yaml import dump as write_yaml
 from yaml import safe_load as read_yaml
 from yaml import YAMLError
 
-from hbstools.io import write_ttis_to_fits
-from hbstools.search import Search
+import hbstools as hbs
 
 LOGO = """
                         
@@ -75,51 +75,76 @@ skip: 3000
 
 
 algorithm_params:
+ # Different algorithms support different parameters. 
+ # The algorithm we are going to use depends on the parameters you'll select, 
+ # according to this table:
+ # 
+ # |               | Python PF+DES | Python BFT | C PF+SES | C BFT |
+ # |---------------|---------------|------------|----------|-------|
+ # | threshold_std |       ✓       |      ✓     |     ✓    |   ✓   |
+ # | mu_min        |       ✓       |      ✓     |     ✓    |   ✓   |
+ # | alpha         |       ✓       |      ✓     |     ✓    |   ✓   |
+ # | beta          |       ✓       |      ✓     |          |       |
+ # | m             |       ✓       |      ✓     |     ✓    |   ✓   |
+ # | t_max         |       ✓       |      ✓     |          |       |
+ # | sleep         |       ✓       |      ✓     |     ✓    |   ✓   |
+ # | majority      |               |      ✓     |          |   ✓   |
+ #
+ # NOTE: a successful execution is not guaranteed if your parameters selection
+ # does not meet one of the columns in the above table.
+ # NOTE: `t_max` and `beta` are commented by default.
+
  # The `threshold` keyword sets the confidence level for detection.
- # The higher the threshold, the less false positive but the more the false negatives.
+ # The higher the threshold, the less false positive but the more false negative.
  # The threshold is expressed in units of standard deviations.
  # Must be greater than 0.
- threshold: 5.5
+ threshold_std: 4.5
 
- # The `mu_min` key set the focus parameter for killing old changepoints 
- # which most likely will never result in a trigger. Keep it below 1.5.
- # Must be greater or equal than 1.0. Disabled if it equals 1.0.
+ # The `mu_min` key set a focus parameter for killing old changepoints, which 
+ # most likely will never result in a trigger. 
+ # Not used if equal 1.0, keep it below 1.5.
+ # Must not be smaller than 1.
  mu_min: 1.1
  
- # The `alpha` keyword sets the background smoothing characteristic time \tau, 
- # where \tau = (binning/0.005).
+ # The `alpha` keyword sets the background smoothing characteristic time tau,
+ # > tau = (binning/0.005).
  # Must be greater than 0.
  alpha: 0.005
 
  # The `beta` keyword sets the trend component for background estimate.
- # The algorithm may become unstable when `beta` is set: leave it `0.0` unless
- # you have good reasons to use it.
+ # The algorithm may become unstable when `beta` is set: keep it off (0.0) 
+ # unless you have good reasons to turn it on.
  # Must be non-negative.
- beta: 0.0
+ # beta: 0.0
 
- # The `m` keyword will prevent the most recent observed counts to be used for 
+ # The `m` keyword will prevent the most recent observed count to be used for 
  # background estimation. This prevents background estimate to be "polluted"
  # by real transients. 
  # It is expressed in units of bin-steps. This means that if `binning` is set
- # to 0.1 and `m` is set to 40, the algorithm won't use the latest 4.0 s
- # of data for background estimate. 
- # Must be a non-negative integer.
+ # to 0.1 and `m` is set to 40, the algorithm won't work use the latest 4.0 s
+ # of data in background estimate. 
+ # Must be a positive integer.
  m: 40
 
  # The `t_max` parameter tells the algorithm to kill old changepoint.
- # It is a good idea to keep it equal to `m`. 
- # It is expressed as a bin-step, see `m` or `skip`.
- # Must be an integer greater than 0.
- t_max: 40
+ # It is a good idea to keep it equal to `m`. Also expressed as a bin-step.
+ # Must be a positive integer.
+ # t_max: 40
 
- # The algorithms stays idle for a while before starting its operations.
+ # The algorithms stays idle for a while before startin its operations.
  # This help forming a good estimate of the background. 
  # The `sleep` parameters sets for how long this idle period lasts.
- # The `sleep` parameter is expressed as a bin-step, see `m` or `skip`.
- # Must be an integer greater than `m`.
- sleep: 1600
-
-"""
+ # In particular, testing for anomalies will start after `m + sleep` bin-steps.
+ # The `sleep` parameter is expressed as a bin-step.
+ # Must be a non-negative integer.
+ sleep: 120
+ 
+ # Running one of the BFT algorithms you may select how many detectors must
+ # be simultaneously over threshold for a trigger to pass through.
+ # This is done specifying the `majority` parameter.
+ # Must be an integer comprised between 1 and 4 (included).
+ majority: 3
+ """
 
 
 def _default_config() -> tuple[Callable, Callable]:
@@ -132,7 +157,7 @@ def _default_config() -> tuple[Callable, Callable]:
             return DEFAULT_CONFIG
 
     def tell() -> bool:
-        """Tells if default config was ever called"""
+        """A sentinel. It tells if default config was ever called"""
         return called_yet[0]
 
     called_yet = [False]
@@ -142,20 +167,7 @@ def _default_config() -> tuple[Callable, Callable]:
 default_config, used_default_config = _default_config()
 
 
-class ConfigSchema(Schema):
-    """A schema used in validation of mercury's configuration files."""
-
-    def validate(self, data, _is_event_schema=True):
-        data = super(ConfigSchema, self).validate(data, _is_event_schema=False)
-        if (
-            _is_event_schema
-            and data["algorithm_params"]["sleep"] <= data["algorithm_params"]["m"]
-        ):
-            raise SchemaError("`sleep` must be strictly greater than `m`.")
-        return data
-
-
-config_schema = ConfigSchema(
+config_schema = Schema(
     {
         "binning": And(
             Use(float),
@@ -171,7 +183,7 @@ config_schema = ConfigSchema(
             error="`skip` must be a non-negative integer",
         ),
         "algorithm_params": {
-            "threshold": And(
+            "threshold_std": And(
                 Use(float),
                 lambda t: t > 0,
                 error="`threshold` must be positive.",
@@ -181,7 +193,7 @@ config_schema = ConfigSchema(
                 lambda a: a > 0,
                 error="`alpha` must be positive",
             ),
-            "beta": And(
+            Optional("beta"): And(
                 Use(float),
                 lambda b: b >= 0,
                 error="`beta` must be non-negative",
@@ -192,16 +204,20 @@ config_schema = ConfigSchema(
                 error="`mu_min` must be equal or greater than one",
             ),
             "m": And(
-                lambda m: isinstance(m, int) & (m >= 0),
-                error="`m` must be a non negative integer.",
-            ),
-            "t_max": And(
-                lambda t: isinstance(t, int) & (t > 0),
-                error="`t_max must be an integer greater than zero",
+                lambda m: isinstance(m, int) & (not m < 1),
+                error="`m` must be a positive integer.",
             ),
             "sleep": And(
-                lambda t: isinstance(t, int) & (t >= 0),
-                error="`sleep` must be non negative",
+                lambda sleep: isinstance(sleep, int) & (not sleep < 0),
+                error="`sleep` must be a non-negative integer.",
+            ),
+            Optional("t_max"): And(
+                lambda t_max: isinstance(t_max, int) & (not t_max < 1),
+                error="`t_max` must be a positive integer.",
+            ),
+            "majority": And(
+                lambda maj: isinstance(maj, int) & (not maj < 1) & (not maj > 4),
+                error="`majority` must be an integer between 1 and 4 (included).",
             ),
         },
     },
@@ -285,19 +301,29 @@ def search_validate_config(
     """Validates user configuration option and records it."""
 
     def validate_config(config_path: Path | None) -> dict:
+        """Checks that the YAML is well written, with well-defined values."""
         config = parse_user_else_default_config(config_path)
         config_schema.validate(config)
         return config
 
     try:
-        configuration = validate_config(value)
+        config = validate_config(value)
     except YAMLError:
         raise click.BadParameter("Cannot parse YAML configuration file.")
     except SchemaError as error:
-        raise click.BadParameter(f"Wrong inputs in config file:\n - {error}")
+        raise click.BadParameter(f"Wrong inputs in config file: \n - {error}")
 
+    # check if we have an algorithm matching the user configuration.
+    algorithm_params = config["algorithm_params"]
+    try:
+        algorithm_class = hbs.trigger.trigger_match(algorithm_params)
+    except ValueError:
+        raise click.BadParameter("Cannot find an algorithm matching the configuration.")
+
+    # store the algorithm name so that we can show it during execution.
+    ctx.obj["search_algoname"] = str(algorithm_class(**algorithm_params))
     ctx.obj["search_config"] = None if used_default_config() else value
-    return configuration
+    return config
 
 
 def validate_output(output: Path, filename: str) -> Path:
@@ -387,26 +413,31 @@ def search(
     def fmt_filename(filename: str | Path) -> str:
         return f"'[b]{filename}[/]'"
 
+    # fmt: off
     console = init_console(with_logo=True)
     console.print(f"Welcome, this is [bold]mercury.search[/].\n")
     config_file = "default" if (f := ctx.obj["search_config"]) is None else f
     console.log(f"Loaded {fmt_filename(config_file)} configuration.")
+    console.log(f"Algorithm {ctx.obj['search_algoname']} matches the configuration.")
 
     search_targets = ["gti.fits", "out_s_cl.evt", "out_x_cl.evt"]
     dataset = crawler(input_directory, search_targets, recursion_limit)
     if not dataset:
         console.print("\nFound no data. Exiting.\n")
         return
-    else:
-        console.log(f"Found {len(dataset)} dataset.")
 
-    _search = Search(**configuration, console=console)
-    ttis = _search(dataset)
+    console.log(f"Found {len(dataset)} data folder{'' if len(dataset) == 1 else 's'}.")
 
-    write_ttis_to_fits(ttis, output_path)
+    ttis = hbs.search(dataset, configuration, console=console)
+    if ttis.empty:
+        console.print("\nNo results to save. Exiting.\n")
+        return
+
     console.log(f"Writing to {fmt_filename(output_path)}.")
+    hbs.io.write_ttis_to_fits(ttis, output_path)
 
     console.print("\nDone.\n")
+    # fmt: on
     return
 
 

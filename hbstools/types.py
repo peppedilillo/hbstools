@@ -1,8 +1,9 @@
 from typing import NamedTuple
 
 MET = float
-Change = tuple[float, int, int]
-ChangeMET = tuple[float, MET, MET]
+Change = tuple[float, int]
+Changepoint = tuple[float, int, int]
+ChangepointMET = tuple[float, MET, MET]
 TTI = tuple[float, float, MET, MET, float, float]
 
 

@@ -4,6 +4,7 @@
 **/.ipynb_checkpoints
 **/.mypy-cache
 **/*.fits
-.venv
+*venv*/
+build
 notebooks
 data

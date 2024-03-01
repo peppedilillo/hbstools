@@ -1,209 +1,102 @@
 from pathlib import Path
-from typing import Iterator, Sequence
+from typing import Callable, Iterable, Sequence
 
-import numpy as np
 import pandas as pd
 from rich.console import Console
 from rich.progress import track
 
+from hbstools.data import filter_energy
 from hbstools.data import get_data
-from hbstools.io import get_gtis
-from hbstools.poissonfocus import PoissonFocusDES
-from hbstools.types import Change
-from hbstools.types import ChangeMET
+from hbstools.format import format_results
+import hbstools.trigger as trig
+from hbstools.types import ChangepointMET
 from hbstools.types import GTI
-from hbstools.types import MET
-from hbstools.types import TTI
-
-FCOLS = [
-    "bkg_pre_start",
-    "bkg_pre_end",
-    "event_start",
-    "event_end",
-    "bkg_post_start",
-    "bkg_post_end",
-]
 
 
-class Search:
-    """Base search class."""
+def search_set(
+    binning: float,
+    skip: int,
+    energy_lims: tuple[float, float],
+    algorithm_params: dict,
+    log=lambda x: x,
+):
+    """Pepare a trigger algorithms and store parameters. Keep this pure."""
 
-    def __init__(
-        self,
-        binning: float,
-        skip: int,
-        energy_lims: tuple[float, float],
-        algorithm_params: dict,
-        console: Console | None = None,
-    ):
-        self.binning = binning
-        self.skip = skip
-        self.enlims = energy_lims
-        self.algorithm_params = algorithm_params
-        self.algorithm = PoissonFocusDES
-        self.console = console
+    def search_run(
+        data_stream: Iterable[tuple[pd.DataFrame, GTI]]
+    ) -> dict[GTI, list[ChangepointMET]]:
+        """Launch the search on every data table."""
+        return {
+            gti: run(filter_energy(data, energy_lims), gti) for data, gti in data_stream
+        }
 
-    def __call__(self, dataset: Sequence[Path | str]) -> pd.DataFrame:
-        return self.make_ttis(self.run_on_dataset(dataset))
+    run = log(trig.trigger_df_set(binning, skip, algorithm_params))
+    return search_run
 
-    @staticmethod
-    def make_bins(
-        start: float,
-        stop: float,
-        step: float,
-    ) -> np.ndarray:
-        """Return bins including last one, which contains stop."""
-        num_intervals = int((stop - start) / step + 1)
-        return np.linspace(start, start + num_intervals * step, num_intervals + 1)
 
-    def filter_data(
-        self,
-        data: pd.DataFrame,
-    ):
-        """Filters data in an energy band."""
-        low, hi = self.enlims
-        return data[(data["ENERGY"] >= low) & (data["ENERGY"] < hi)]
+def search_log(write: Callable):
+    """This is where console writing, error checking and other housekeeping task happens.
+    First, we take from the user a function which we will use for writing our messages.
+    For example, we can take `console.log`, `print`, some function to write to file, or
+    a combination of all."""
 
-    def bin_data(
-        self, data: pd.DataFrame, gti: GTI, binning: float
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Bins data in time."""
-        bins = self.make_bins(gti.start, gti.end, binning)
-        return np.histogram(data["TIME"], bins=bins)
+    def helper(f: Callable):
+        """We take `f` the function which launches the algorithm on a single data table and
+        return a troy horse. This troy horse looks exactly as `f` but intercepts its
+        output and input, carrying out all the housekeeping tasks we need to perform."""
 
-    def run(
-        self,
-        xs: Sequence[int],
-        bins: Sequence[float] | None = None,
-    ) -> Change:
-        """Run the algorithm one step a time."""
-        algorithm = self.algorithm(**self.algorithm_params)
-        for t, x_t in enumerate(xs):
-            significance, offset = algorithm.step(x_t)
-            if significance:
-                return significance, t - offset + 1, t
-        return 0.0, len(xs) + 1, len(xs)
-
-    def run_on_segment(
-        self,
-        counts: np.ndarray,
-        bins: np.ndarray,
-    ) -> list[Change]:
-        """Runs on binned data restarting the algorithm after sleep."""
-
-        def f(cs, bs, skip, acc):
-            if not len(cs):
+        def wrapper(data: pd.DataFrame, gti: GTI) -> list[ChangepointMET]:
+            """The troy horse."""
+            write(f"[dim]On GTI {gti.start:.0f}, {gti.end:.0f}..")
+            try:
+                rs = f(data, gti)
+            except ValueError:
+                write(f"[red]Error: invalid algorithm input.[/]")
                 return []
-            s, cp, tt = self.run(cs, bs)
-            # if ended with no trigger algorithm returns 0, len(xs) + 1, len(xs)
-            t = [(s, acc + cp, acc + tt)] if tt >= cp else []
-            return t + f(cs[tt + skip :], bs[tt + skip :], skip, acc + tt + skip)
-
-        return f(counts, bins, self.skip, 0)
-
-    def run_on_dataset(
-        self,
-        dataset: Sequence[Path | str],
-    ) -> dict[GTI, list[ChangeMET]]:
-        """Runs on every gtis and returns anomalies."""
-
-        def map_bins_to_times(rs, bs):
-            """FOCuS time are expressed as bin-indeces.
-            This transform from indeces to actual time."""
-            return [(r[0], bs[r[1]], bs[r[2]]) for r in rs]
-
-        def progressbar(gen: Iterator):
-            return track(
-                gen,
-                description="[dim cyan]\[$Running]",
-                transient=True,
-                console=self.console,
+            (
+                write(f"Found [b]{len(rs)}[/] transient{'s' if len(rs) > 1 else ''}")
+                if rs
+                else None
             )
+            for r in rs:
+                write(f"[dim]|- MET {r[2]:1.1f}, (+{r[2] - gti.start:1.1f} s).[/]")
+            return rs
 
-        results = {}
-        sorted_folders = sorted(dataset, key=lambda d: get_gtis(d)[0].start)
-        _get_data = (
-            progressbar(get_data(sorted_folders))
-            if self.console
-            else get_data(sorted_folders)
+        return wrapper
+
+    return helper
+
+
+def search(
+    data_folders: Sequence[Path | str],
+    configuration: dict,
+    console: Console | None = None,
+):
+    """An interface to search."""
+    if console is not None:
+        _log = search_log(console.log)
+        data_stream = track(
+            get_data(data_folders),
+            description="[dim cyan](Running..)",
+            transient=True,
+            console=console,
         )
-        for data, gti in _get_data:
-            data = self.filter_data(data)
-            counts, bins = self.bin_data(data, gti, self.binning)
-            anomalies = self.run_on_segment(counts, bins)
-            results[gti] = map_bins_to_times(anomalies, bins)
+    else:
+        _log = search_log(lambda _: None)
+        data_stream = get_data(data_folders)
 
-            # fmt: off
-            if self.console:
-                self.console.log(f"[dim]On GTI chunk {gti.start:.1f}-{gti.end:.1f}")
-                if anomalies:
-                    self.console.log(f"Found [b]{len(anomalies)}[/] transient{'s' if len(anomalies) > 1 else ''}")
-                    for i, r in enumerate(results[gti], start=1):
-                        self.console.log(f"[dim]MET time {r[2]:.1f}, GTI+{r[2] - gti.start:.1f}s-{r[2] - gti.start:.1f}s.[/]")
-            # fmt: on
-        return results
-
-    def compute_bkg_pre(
-        self,
-        trigtime: MET,
-        changepoint: MET,
-        gti: GTI,
-    ) -> tuple[float, float]:
-        """Times from changepoint of an interval ending `m` steps behind the triggertime,
-        with duration binning / alpha."""
-        binning = self.binning
-        duration = binning / self.algorithm_params["alpha"]
-        m = self.algorithm_params["m"]
-
-        if trigtime - m * binning - duration < gti.start:
-            start = -(changepoint - gti.start)
-            end = -m * binning + (trigtime - changepoint)
-        else:
-            end = (trigtime - changepoint) - binning * m
-            start = end - duration
-        return start, end
-
-    def compute_bkg_post(
-        self,
-        trigtime: MET,
-        changepoint: MET,
-        gti: GTI,
-    ) -> tuple[float, float]:
-        """Times from changepoint of an interval starting after skip steps from triggertime,
-        with duration binning / alpha."""
-        binning = self.binning
-        duration = binning / self.algorithm_params["alpha"]
-        skip = self.skip
-
-        if changepoint + (trigtime - changepoint) + binning * skip + duration > gti.end:
-            end = gti.end - changepoint
-            start = max(end - duration, binning)
-        else:
-            start = (trigtime - changepoint) + binning * skip
-            end = start + duration
-        return start, end
-
-    def format_result(
-        self,
-        result: ChangeMET,
-        gti: GTI,
-    ) -> TTI:
-        """Transforms focus results (times expressed as mets) into events formatted like:
-        (bkg_pres_start, bkg_pre_ends, event_starts, event_ends, bkg_post_start, bkg_post_end)
-        """
-        significance, changepoint, trigtime = result
-        bkg_pre = self.compute_bkg_pre(trigtime, changepoint, gti)
-        bkg_post_start, bkg_post_end = self.compute_bkg_post(trigtime, changepoint, gti)
-        event_interval = changepoint, changepoint + bkg_post_start
-        return *bkg_pre, *event_interval, bkg_post_start, bkg_post_end
-
-    def make_ttis(
-        self,
-        results: dict[GTI, list[ChangeMET]],
-    ) -> pd.DataFrame:
-        """Puts ttis into a dataframe"""
-        formatted_results = []
-        for gti in results.keys():
-            for anomaly in results[gti]:
-                formatted_results.append(self.format_result(anomaly, gti))
-        return pd.DataFrame(formatted_results, columns=FCOLS)
+    algorithm_params = configuration["algorithm_params"]
+    return format_results(
+        results=search_set(
+            configuration["binning"],
+            configuration["skip"],
+            configuration["energy_lims"],
+            configuration["algorithm_params"],
+            _log,
+        )(
+            data_stream,
+        ),
+        intervals_duration_seconds=configuration["binning"] / algorithm_params["alpha"],
+        preinterva_ends_seconds=configuration["binning"] * algorithm_params["m"],
+        postinterval_start_seconds=configuration["binning"] * configuration["skip"],
+    )

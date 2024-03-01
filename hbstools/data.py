@@ -1,11 +1,12 @@
 from math import isclose
 from pathlib import Path
-from typing import Iterator, Sequence
+from typing import Iterable, Sequence
 
+import numpy as np
 import pandas as pd
 
-from hbstools.io import get_gtis
-from hbstools.io import get_merged_data
+from hbstools.io import read_event_files
+from hbstools.io import read_gti_files
 from hbstools.types import GTI
 
 
@@ -14,6 +15,7 @@ def merge_overlapping_gtis(gtis: list[GTI], tolerance: float = 1.0) -> list[tupl
     F([(1, 2), (3, 4), (4, 5)]) = [(1, 2), (3, 5)]"""
 
     def overlap(x: GTI, y: GTI, abs_tol: float):
+        """`x` overlaps `y` if `x` starts before or at the end of `y`"""
         assert x.start < y.end
         return isclose(x.end, y.start, abs_tol=abs_tol) or (y.start < x.end)
 
@@ -33,7 +35,7 @@ def merge_overlapping_gtis(gtis: list[GTI], tolerance: float = 1.0) -> list[tupl
     return f(gtis)
 
 
-def get_data(data_folders: Sequence[Path | str]) -> Iterator[tuple[pd.DataFrame, GTI]]:
+def get_data(data_folders: Sequence[Path | str]) -> Iterable[tuple[pd.DataFrame, GTI]]:
     """A generator which will get you one GTI dataframe a time."""
 
     def after(df, time):
@@ -58,11 +60,75 @@ def get_data(data_folders: Sequence[Path | str]) -> Iterator[tuple[pd.DataFrame,
                 yield after(df, gti.start), gti
                 return
             new_file, *_ = files
-            yield from f(gtis, files[1:], concatenate(df, get_merged_data(new_file)))
+            yield from f(gtis, files[1:], concatenate(df, read_event_files(new_file)))
         else:
             yield between(df, gti.start, gti.end), gti
             yield from f(gtis[1:], files, after(df, gti.end))
 
-    all_gtis = [gti for gtis in [get_gtis(dp) for dp in data_folders] for gti in gtis]
+    sorted_folders = sorted(data_folders, key=lambda d: read_gti_files(d)[0].start)
+    all_gtis = [
+        gti for gtis in [read_gti_files(dp) for dp in sorted_folders] for gti in gtis
+    ]
     gtis = merge_overlapping_gtis(all_gtis)
-    return f(gtis, data_folders[1:], get_merged_data(data_folders[0]))
+    return f(gtis, sorted_folders[1:], read_event_files(sorted_folders[0]))
+
+
+def filter_energy(
+    data: pd.DataFrame,
+    energy_lims: tuple[float, float],
+):
+    """Filters data in an energy band."""
+    low, hi = energy_lims
+    return data[(data["ENERGY"] >= low) & (data["ENERGY"] < hi)]
+
+
+def _histogram(
+    data: pd.Series,
+    start: float,
+    stop: float,
+    binning: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Bins data in time and returns counts and bins. The `counts` array has
+    length int((stop - start) / binning + 1), the `bins` array is
+    longer by one unit. The last element of `bins` is guaranteed to be
+    greater-equal than stop."""
+    num_intervals = int((stop - start) / binning + 1)
+    counts, bins = np.histogram(
+        data,
+        range=(start, start + num_intervals * binning),
+        bins=num_intervals,
+    )
+    return counts, bins
+
+
+def histogram(
+    data: pd.DataFrame,
+    gti: GTI,
+    binning: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """A specialized histogram for event lists."""
+    counts, bins = _histogram(
+        data["TIME"],
+        gti.start,
+        gti.end,
+        binning,
+    )
+    return counts, bins
+
+
+def histogram_quadrants(
+    data: pd.DataFrame,
+    gti: GTI,
+    binning: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Bins data in time, separating data from different quadrants."""
+    _, bins = _histogram(pd.Series([]), gti.start, gti.end, binning)
+    return (
+        np.vstack(
+            [
+                histogram(quadrant_data, gti, binning)[0]
+                for _, quadrant_data in data.groupby("QUADID", observed=False)
+            ]
+        ),
+        bins,
+    )

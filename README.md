@@ -4,7 +4,7 @@ in data from the HERMES nanosatellite constellation. This software was developed
 the Italian National Institute for Astrophysics and the Italian Space Agency.
 
 It is composed of a main library, called `hbstools`, and a collection of scripts to interface with it.
-HERMES Burst Search Tools uses a changepoint detection algorithm called Poisson FOCuS to seach for astrophysical events, see:
+HERMES Burst Search Tools uses a changepoint detection algorithm called Poisson FOCuS to search for astrophysical events, see:
 
 * _Ward, K., Dilillo, G., Eckley, I., & Fearnhead, P. (2023). Poisson-FOCuS: An efficient online method for detecting count bursts with application to gamma ray burst detection. Journal of the American Statistical Association, 1-13._
 * _Dilillo, G., Ward, K., Eckley, I. A., Fearnhead, P., Crupi, R., Evangelista, Y., Vacchi, A., & Fiore, F. (2023). Gamma-ray burst detection with Poisson-FOCuS and other trigger algorithms. arXiv preprint arXiv:2312.08817._
@@ -52,6 +52,37 @@ From terminal run:
 If you are using poetry for other projects refer to [this link](https://python-poetry.org/docs/managing-environments/#deleting-the-environments) instead.
 The latter step is only required if you installed with Anaconda.
 
+# Algorithms
+With HBStools come multiple implementation of Poisson-FOCuS and background estimators.
+Some of these were designed for speed, other for flexibility, other for visualization and debugging. 
+The algorithm choice depends on your selection of the configuration parameters, which must
+meet one of the column in this table:
+
+|               | Python PF+DES | Python BFT | C PF+SES | C BFT |
+|---------------|---------------|------------|----------|-------|
+| threshold_std |       ✓       |      ✓     |     ✓    |   ✓   |
+| mu_min        |       ✓       |      ✓     |     ✓    |   ✓   |
+| alpha         |       ✓       |      ✓     |     ✓    |   ✓   |
+| beta          |       ✓       |      ✓     |          |       |
+| m             |       ✓       |      ✓     |     ✓    |   ✓   |
+| t_max         |       ✓       |      ✓     |          |       |
+| sleep         |       ✓       |      ✓     |     ✓    |   ✓   |
+| majority      |               |      ✓     |          |   ✓   |
+
+For more informations on these parameters, try `mercury --drop .`.
+
+### BFT9000
+
+![bft](assets/bft.png)
+
+The BFT (Big _FOCuS_ Trigger) is our "flagship" algorithm right now.
+It is a C implementantion of four Poisson-FOCuS algorithm with automatic 
+background estimate by single exponential smoothing. All algorithms work independently
+of each other, over data from different detectors. A trigger pass through only if 
+a commandable number of trigger algorithm (majority vote) are found over threshold at the 
+same time. If bad data are passed to one of the algorithms, that algorithm is shut down, but
+BFT keeps running until the number of corrupted algorithms are less than the voting majority.
+
 
 # Mercury
 ![mercury](assets/mercury-gif/mercury.gif)
@@ -86,7 +117,7 @@ Using `mercury search . -o myresults-filename.fits` you will change the output f
 > ❗ **To get help with mercury run `mercury --help`.**
 > To get help on a particular command, such as `search`, you call `mercury search --help`.
 
-### Demo dataset
+## Demo dataset
 We have uploaded a demo dataset [online](https://drive.google.com/file/d/1kC473-QQsLWrClxKRHT8JJCIJr_KO_4_/view?usp=sharing).
 Download the archive and unzip it then, from terminal:
 
