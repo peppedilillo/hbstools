@@ -11,17 +11,22 @@ HERMES Burst Search Tools uses a changepoint detection algorithm called Poisson 
 
 
 # Setup
-
-Make an environment and run:
+## TL:DR
+Make an environment with `venv` and run:
 
 ```pip install git+https://github.com/peppedilillo/hbstools.git```
+
+or, if you are on an Anaconda distribution of python, download the `conda-env.yml` and run:
+
+```conda env create -f conda-env.yml```
 
 You're set, great!
 
 BUT STOP A MOMENT. 
 
-If you are unfamiliar with Python, python packaging, virtual environments, or if you are an Anaconda user,
-please forget what you just saw and follow this step-by-step guide:
+If you are unfamiliar with Python, python packages, virtual environments, never did this before or if you have problems, we have the..
+
+## ..Long version
 
 1. If you are unsure whether you are on Anaconda or you are not, open a terminal and type ```which python``` (if on GNU-Linux or Mac) or ```gcm python``` (if on Windows). You should get a path to your Python executable this way. If you see some `anaconda` there (e.g., `C:\Users\peppe\anaconda3\envs\hbstools`), you are on anaconda, unless you really like snakes.
 
@@ -45,7 +50,7 @@ Try `mercury --help` or `import hbstools` from the Python REPL to make sure ever
 ### Installing from source
 
 Both the methods above will fetch the source from this github repo, so you won't be able to change the code yourself with ease.
-If you need to interact with the actual code to modify it, or do some other dev work, create an environment with python 3.11, download the repo, unzip, move there from terminal, make your changes and run `pip install .`. Keep running `pip install .` every time you change something or you won't see the effect of the changes.
+If you need to interact with the actual code to modify it, or do some other dev work, the process is similiar but you'll need to install from your local copy of the source code. To achieve this, 1. create an environment; 2. download the repo, unzip it, and move there from terminal; 3. make your changes; 4. activate the environment and run `pip install .`. 
 
 ### Troubleshooting
 
@@ -55,7 +60,7 @@ If you need to interact with the actual code to modify it, or do some other dev 
 > ❗ **Always remember to activate your environment**, otherwise you won't be able to use hbstools or mercury.
 
 
-### Uninstalling
+## Uninstalling
 
 Either run `conda env remove -n hbstools` (if you are using Anaconda) or put the `venv-hbstools` in the trashbin.
 If you downloaded the source code you can trash it away too.
@@ -84,12 +89,8 @@ For more informations on these parameters, try `mercury --drop .`.
 ![bft](assets/bft.png)
 
 The BFT (Big _FOCuS_ Trigger) is our "flagship" algorithm right now.
-It is a C implementantion of four Poisson-FOCuS algorithm with automatic 
-background estimate by single exponential smoothing. All algorithms work independently
-of each other, over data from different detectors. A trigger pass through only if 
-a commandable number of trigger algorithm (majority vote) are found over threshold at the 
-same time. If bad data are passed to one of the algorithms, that algorithm is shut down, but
-BFT keeps running until the number of corrupted algorithms are less than the voting majority.
+It is an optimized C implementation of four Poisson-FOCuS algorithm with automatic background estimate by single exponential smoothing. All algorithms work independently of each other, over data from different detectors. A trigger pass through only if a commandable number of trigger algorithm (majority vote) are found over threshold at the same time. If bad data are passed to one of the algorithms, that algorithm is shut down, but
+BFT keeps running untila trigger is found or the number of corrupted algorithms if greater than the voting majority.
 
 
 # Mercury
