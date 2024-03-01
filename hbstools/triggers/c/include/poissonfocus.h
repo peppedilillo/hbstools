@@ -1,6 +1,12 @@
 #ifndef POISSONFOCUS_H
 #define POISSONFOCUS_H
 
+#if defined(_WIN32)
+#  define DLL00_EXPORT_API __declspec(dllexport)
+#else
+#  define DLL00_EXPORT_API
+#endif
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -48,9 +54,9 @@ struct pf_changepoint
 	size_t triggertime;
 };
 
-enum pf_errors
+DLL00_EXPORT_API enum pf_errors
 pf_interface(struct pf_changepoint* cp, count_t* xs, double* bs, size_t len,
-	double threshold, double mu_min);
+		double threshold, double mu_min);
 
 /**
  * Utilities.
@@ -59,6 +65,6 @@ pf_interface(struct pf_changepoint* cp, count_t* xs, double* bs, size_t len,
 struct pf_changepoint
 pf_change2changepoint(struct pf_change c, size_t t);
 
-enum pf_errors pf_check_init_parameters(double threshold_std, double mu_min);
+DLL00_EXPORT_API enum pf_errors pf_check_init_parameters(double threshold_std, double mu_min);
 
 #endif //POISSONFOCUS_H

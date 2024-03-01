@@ -13,8 +13,6 @@ from hbstools.triggers.poissonfocusdes import PoissonFocusDes
 from hbstools.types import Change
 from hbstools.types import Changepoint
 
-_QUADRANTS_NUMBER = 4
-
 
 def fold_changepoints(func: Callable):
     """A decorator for reducing a list of changepoints from different detectors
@@ -36,6 +34,8 @@ class Bft(TriggerAlgorithm):
     independent FOCuS algorithms, with autonoumous background estimate by
     double exponential smoothing."""
 
+    QUADRANTS_NUMBER = 4
+
     def __str__(self):
         return "BFT"
 
@@ -56,6 +56,7 @@ class Bft(TriggerAlgorithm):
             threshold_std, alpha, beta, m, sleep, t_max, mu_min, s_0, b_0, majority
         )
         self.majority = majority
+        self.quadrantmask = [1 for i in range(self.QUADRANTS_NUMBER)]
         self.fs = [
             PoissonFocusDes(
                 threshold_std=threshold_std,
@@ -68,7 +69,7 @@ class Bft(TriggerAlgorithm):
                 s_0=s_0,
                 b_0=b_0,
             )
-            for _ in range(_QUADRANTS_NUMBER)
+            for _ in range(self.QUADRANTS_NUMBER)
         ]
 
     @fold_changepoints
@@ -76,17 +77,19 @@ class Bft(TriggerAlgorithm):
         self,
         xss: npt.NDArray,  # shape (4, _)
     ) -> list[Changepoint]:
-        det_ids, _ = xss.shape
+        assert len(xss) == self.QUADRANTS_NUMBER
         changes = [(0.0, 0), (0.0, 0), (0.0, 0), (0.0, 0)]
         t_length = len(xss[0])
         for t in range(t_length):
-            changes = self.step([xss[det_id, t] for det_id in range(det_ids)])
-            if len([*filter(lambda c: c[0] > 0, changes)]) >= self.majority:
+            changes = self.step(xss[:, t])
+            if sum(self.quadrantmask) < self.majority:
+                raise ValueError("Not enough working quadrants for majority.")
+            elif len([*filter(lambda c: c[0] > 0, changes)]) >= self.majority:
                 break
         return [*map(lambda c: (c[0], t - c[1] + 1, t), changes)]
 
-    @staticmethod
     def check_init_parameters(
+        self,
         threshold_std,
         alpha,
         beta,
@@ -106,14 +109,24 @@ class Bft(TriggerAlgorithm):
         PoissonFocusDes.check_init_parameters(
             threshold_std, alpha, beta, m, sleep, mu_min, t_max, s_0, b_0
         )
-        if majority < 1 or majority > _QUADRANTS_NUMBER:
-            raise ValueError(
-                "majority should be comprised between 1 and `detector_number`"
-            )
+        if majority < 1 or majority > self.QUADRANTS_NUMBER:
+            raise ValueError("majority should be comprised between 1 and `detector_number`")
         return
 
-    def step(self, xts: list[int]) -> list[Change]:
+    def _step(self, det_id: int, xts) -> Change:
+        """Runs a single algorithms if it has been working so far,
+         then annotates if an error occurs. Returns a trivial change"""
+        if not self.quadrantmask[det_id]:
+            return 0.0, 0
+        try:
+            c = self.fs[det_id].step(xts[det_id])
+        except ValueError:
+            self.quadrantmask[det_id] = 0
+            return 0.0, 0
+        return c
+
+    def step(self, xts: list[int] | npt.NDArray) -> list[Change]:
         """Basic algorithm step, i.e. call subalgorithms and asks them to do
         their thing."""
         # returns 4 quality-checked changes
-        return [f.step(x_t) for f, x_t in zip(self.fs, xts)]
+        return [self._step(det_id, xts) for det_id in range(self.QUADRANTS_NUMBER)]

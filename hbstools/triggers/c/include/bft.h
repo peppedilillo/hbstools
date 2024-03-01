@@ -7,8 +7,6 @@
 #  define DLL00_EXPORT_API
 #endif
 
-#include <stdlib.h>
-#include <stdbool.h>
 #include "poissonfocusses.h"
 
 #define DETECTORS_NUMBER 4
@@ -33,7 +31,7 @@ struct bft_changes
 };
 
 Bft* bft_init(enum bft_errors* err, double threshold_std, double mu_min,
-	double alpha, int m, int sleep, int majority);
+		double alpha, int m, int sleep, int majority);
 
 void bft_terminate(Bft* bft);
 
@@ -51,16 +49,16 @@ struct bft_changepoints
 };
 
 DLL00_EXPORT_API enum bft_errors bft_interface(struct bft_changepoints* cps,
-	count_t* xss, size_t len,
-	double threshold_std, double mu_min,
-	double alpha, int m, int sleep,
-	int majority);
+		const count_t* xss, size_t len,
+		double threshold_std, double mu_min,
+		double alpha, int m, int sleep,
+		int majority);
 
 /**
  * Utilities
  */
 
-DLL00_EXPORT_API enum bft_errors bft_check_init_parameters(double threshold_std, double mu_min,
-	double alpha, int m, int sleep, int majority);
+DLL00_EXPORT_API enum bft_errors bft_check_init_parameters(double threshold_std,
+		double mu_min, double alpha, int m, int sleep, int majority);
 
 #endif //BFT_H

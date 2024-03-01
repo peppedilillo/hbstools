@@ -1,7 +1,6 @@
+#include "poissonfocus.h"
 #include <math.h>
 #include <assert.h>
-#include <stdio.h>
-#include "poissonfocus.h"
 
 #define STACK_LEN (PF_MAXCURVES + 1)
 
@@ -162,9 +161,9 @@ struct pf
 enum pf_errors pf_check_init_parameters(double threshold_std, double mu_min)
 {
 	if (
-		threshold_std <= 0.0 ||
-		mu_min < 1.0
-		)
+			threshold_std <= 0.0 ||
+			mu_min < 1.0
+			)
 		return PF_ERROR_INVALID_INPUT;
 	return PF_NO_ERRORS;
 }
@@ -178,8 +177,8 @@ static struct pf*
 init_helper(struct pf* f, struct stack* curves, double threshold_std, double mu_min)
 {
 	f->status = (struct status){
-		TEST,
-		PF_NO_ERRORS
+			TEST,
+			PF_NO_ERRORS
 	};
 	f->curves = curves;
 	f->change = (struct change){ 0.0, 0 };
@@ -322,9 +321,9 @@ static inline bool triggered(struct pf* f)
 enum pf_errors
 pf_step(struct pf* f, bool* trigflag, count_t x, double b)
 {
-    *trigflag = false;
+	*trigflag = false;
 
-    switch (f->status.code)
+	switch (f->status.code)
 	{
 	case TEST :
 	{
@@ -378,9 +377,9 @@ struct pf_changepoint
 pf_change2changepoint(struct pf_change c, size_t t)
 {
 	return (struct pf_changepoint){
-		c.significance_std,
-		t - c.offset + 1,
-		t
+			c.significance_std,
+			t - c.offset + 1,
+			t
 	};
 }
 
@@ -416,7 +415,7 @@ pf_interface(struct pf_changepoint* cp, count_t* xs, double* bs, size_t len, dou
 	}
 
 	// loop over data and keep track of steps in `t`.
-	bool got_trigger;
+	bool got_trigger = false;
 	size_t t;
 	for (t = 0; t < len; t++)
 	{
@@ -446,7 +445,7 @@ pf_interface(struct pf_changepoint* cp, count_t* xs, double* bs, size_t len, dou
 	}
 
 	*cp = pf_change2changepoint(pf_get_change(focus),
-		t == len ? t - 1 : t);
+			t == len ? t - 1 : t);
 	pf_terminate(focus);
 	return err;
 }

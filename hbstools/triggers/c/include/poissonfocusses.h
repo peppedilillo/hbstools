@@ -7,8 +7,6 @@
 #  define DLL00_EXPORT_API
 #endif
 
-#include <stdlib.h>
-#include <stdbool.h>
 #include "poissonfocus.h"
 
 enum pfs_errors
@@ -26,7 +24,7 @@ typedef struct pfs PoissonFocusSES;
  */
 
 PoissonFocusSES* pfs_init(enum pfs_errors* e, double threshold_std,
-	double mu_min, double alpha, int m, int sleep);
+		double mu_min, double alpha, int m, int sleep);
 
 void pfs_terminate(PoissonFocusSES* f);
 
@@ -40,14 +38,13 @@ struct pf_change pfs_get_change(PoissonFocusSES* f);
 
 DLL00_EXPORT_API enum pfs_errors
 pfs_interface(struct pf_changepoint* cp, count_t* xs, size_t len,
-	double threshold_std, double mu_min, double alpha, int m, int sleep);
+		double threshold_std, double mu_min, double alpha, int m, int sleep);
 
 /**
  * Utilities.
  */
 
-DLL00_EXPORT_API enum pfs_errors
-pfs_check_init_parameters(double threshold_std, double mu_min,
-	double alpha, int m, int sleep);
+DLL00_EXPORT_API enum pfs_errors pfs_check_init_parameters(double threshold_std, double mu_min,
+		double alpha, int m, int sleep);
 
 #endif //POISSONFOCUSSES_H

@@ -1,6 +1,6 @@
-#include <assert.h>
 #include "poissonfocusses.h"
 #include "poissonfocus.h"
+#include <assert.h>
 
 /**
  * A queue of int implemented over a circular buffer.
@@ -118,19 +118,19 @@ struct pfs
  * Will return an error if the arguments are invalid.
  */
 enum pfs_errors pfs_check_init_parameters(double threshold_std, double mu_min,
-	double alpha, int m, int sleep)
+		double alpha, int m, int sleep)
 {
 	// @formatter:off
-  if (
-	  pf_check_init_parameters(threshold_std, mu_min)
-	     == PF_ERROR_INVALID_INPUT ||
-	              alpha     <  0.0 ||
-				  alpha     >  1.0 ||
-				  m         <  1   ||
-				  sleep     <  0
-	  )
-    // @formatter:on
-	  return PFS_ERROR_INVALID_INPUT;
+    if (
+            pf_check_init_parameters(threshold_std, mu_min)
+            == PF_ERROR_INVALID_INPUT ||
+			              alpha < 0.0 ||
+                          alpha > 1.0 ||
+                                m < 1 ||
+                            sleep < 0
+            )
+		return PFS_ERROR_INVALID_INPUT;
+	// @formatter:on
 	return PFS_NO_ERRORS;
 }
 
@@ -141,9 +141,9 @@ enum pfs_errors pfs_check_init_parameters(double threshold_std, double mu_min,
  * Wraps init_helper.
  */
 static struct pfs* init_helper(struct pfs* f,
-	struct pf* focus,
-	struct queue* q, double alpha,
-	int m, int sleep)
+		struct pf* focus,
+		struct queue* q, double alpha,
+		int m, int sleep)
 {
 	f->focus = focus;
 	f->queue = q;
@@ -152,8 +152,8 @@ static struct pfs* init_helper(struct pfs* f,
 	f->sleep = sleep;
 	f->t = sleep + m;
 	f->status = (struct status){
-		COLLECT,
-		PFS_NO_ERRORS
+			COLLECT,
+			PFS_NO_ERRORS
 	};
 	return f;
 }
@@ -172,7 +172,7 @@ static struct pfs* init_helper(struct pfs* f,
  * @return a pointer
  */
 struct pfs* pfs_init(enum pfs_errors* e, double threshold_std,
-	double mu_min, double alpha, int m, int sleep)
+		double mu_min, double alpha, int m, int sleep)
 {
 	if (pfs_check_init_parameters(threshold_std, mu_min, alpha, m, sleep))
 	{
@@ -287,7 +287,7 @@ step_test(struct pfs* f, bool* trigflag, count_t x_t)
 	queue_enqueue(f->queue, x_t);
 
 	// feeds focus and checks if we got triggers
-	bool focus_triggered;
+	bool focus_triggered = false;
 	enum pf_errors err;
 	err = pf_step(f->focus, &focus_triggered, x_t, f->lambda_t);
 	*trigflag = triggered(f, &focus_triggered);
@@ -316,9 +316,9 @@ static inline void step_update(struct pfs* f, count_t x_t)
  */
 enum pfs_errors pfs_step(PoissonFocusSES* f, bool* trigflag, count_t x_t)
 {
-    *trigflag = false;
+	*trigflag = false;
 
-    switch (f->status.code)
+	switch (f->status.code)
 	{
 	case TEST:
 	{
@@ -398,8 +398,8 @@ struct pf_change pfs_get_change(struct pfs* f)
  */
 enum pfs_errors
 pfs_interface(struct pf_changepoint* cp, count_t* xs, size_t len,
-	double threshold_std, double mu_min,
-	double alpha, int m, int sleep)
+		double threshold_std, double mu_min,
+		double alpha, int m, int sleep)
 {
 	enum pfs_errors err = PFS_NO_ERRORS;
 	PoissonFocusSES* focusexp = pfs_init(&err, threshold_std, mu_min, alpha, m, sleep);
@@ -415,7 +415,7 @@ pfs_interface(struct pf_changepoint* cp, count_t* xs, size_t len,
 		return err;
 	}
 
-	bool got_trigger;
+	bool got_trigger = false;
 	size_t t;
 	for (t = 0; t < len; t++)
 	{
@@ -445,7 +445,7 @@ pfs_interface(struct pf_changepoint* cp, count_t* xs, size_t len,
 	}
 
 	*cp = pf_change2changepoint(pfs_get_change(focusexp),
-		t == len ? t - 1 : t);
+			t == len ? t - 1 : t);
 	pfs_terminate(focusexp);
 	return err;
 }

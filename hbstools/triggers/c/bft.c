@@ -1,4 +1,8 @@
 #include "bft.h"
+#include <string.h>
+
+#define BITARRAY_BYTE_SIZE ((DETECTORS_NUMBER + 7) / 8)
+
 
 /**
  * BFT stands for Big Focus Trigger :^).
@@ -13,27 +17,60 @@ struct bft
 	int m;
 	int sleep;
 	int majority;
+	unsigned char bitarray[BITARRAY_BYTE_SIZE];
 	PoissonFocusSES* fs[DETECTORS_NUMBER];
 };
+
+/**
+ *  Sets on the n-th bit of the BFT's dead quadrant bit array.
+ */
+void bitarray_set(unsigned char* bitarray, int n)
+{
+	int index = n / 8;  // byte index
+	int offset = n % 8;  // bit offset
+	unsigned char mask = (unsigned char)(1 << offset); // little-endian
+
+	bitarray[index] |= mask;
+}
+
+/**
+ *  Counts the number of _zeros_ in BFT's bitarray, i.e. the number of
+ *  working detectors/algorithms.
+ */
+int bitarray_count(const unsigned char* bitarray)
+{
+	int counts = DETECTORS_NUMBER;
+	for (int i = 0; i < BITARRAY_BYTE_SIZE; i++)
+	{ // iterate over bytes
+		unsigned char byte = bitarray[i];
+		int maxoffset = i < BITARRAY_BYTE_SIZE - 1 ? 8 : DETECTORS_NUMBER % 8;
+		for (int offset = 0; offset < maxoffset; offset++)
+		{
+			counts -= byte & 1;
+			byte >>= 1;
+		}
+	}
+	return counts;
+}
 
 /**
  * Defines and checks the domain of the init function arguments.
  * Returns an error if the arguments are invalid.
  */
 enum bft_errors bft_check_init_parameters(double threshold_std, double mu_min,
-	double alpha, int m, int sleep, int majority)
+		double alpha, int m, int sleep, int majority)
 {
 	// @formatter:off
-	if (
-		pfs_check_init_parameters(
-			threshold_std, mu_min,
-			alpha, m, sleep)
-		== PFS_ERROR_INVALID_INPUT ||
-		              majority < 1 ||
-					  majority > DETECTORS_NUMBER
-		)
-		return BFT_ERROR_INVALID_INPUT;
-	// @formatter:on
+    if (
+            pfs_check_init_parameters(
+                    threshold_std, mu_min,
+                    alpha, m, sleep)
+            == PFS_ERROR_INVALID_INPUT ||
+			              majority < 1 ||
+                          majority > DETECTORS_NUMBER
+            )
+        return BFT_ERROR_INVALID_INPUT;
+    // @formatter:on
 	return BFT_NO_ERRORS;
 }
 
@@ -43,8 +80,8 @@ enum bft_errors bft_check_init_parameters(double threshold_std, double mu_min,
  * an implementation without dynamic allocation.
  */
 static struct bft* init_helper(struct bft* bft, PoissonFocusSES** fs,
-	double threshold_std, double mu_min,
-	double alpha, int m, int sleep, int majority)
+		double threshold_std, double mu_min,
+		double alpha, int m, int sleep, int majority)
 {
 	bft->threshold_std = threshold_std;
 	bft->mu_min = mu_min;
@@ -52,6 +89,7 @@ static struct bft* init_helper(struct bft* bft, PoissonFocusSES** fs,
 	bft->m = m;
 	bft->sleep = sleep;
 	bft->majority = majority;
+	memset(bft->bitarray, 0, sizeof(bft->bitarray));
 	for (int i = 0; i < DETECTORS_NUMBER; i++)
 		bft->fs[i] = fs[i];
 	return bft;
@@ -64,7 +102,7 @@ static struct bft* init_helper(struct bft* bft, PoissonFocusSES** fs,
  * Wraps init_helper.
  */
 struct bft* bft_init(enum bft_errors* e, double threshold_std, double mu_min,
-	double alpha, int m, int sleep, int majority)
+		double alpha, int m, int sleep, int majority)
 {
 	if (bft_check_init_parameters(threshold_std, mu_min, alpha, m, sleep, majority))
 	{
@@ -123,17 +161,19 @@ void bft_terminate(struct bft* bft)
  */
 enum bft_errors bft_step(Bft* bft, bool* got_trigger, count_t* xs)
 {
-	bool focusdes_triggered;
+	bool focusdes_triggered = false;
 	int triggered_detectors = 0;
 	enum pfs_errors err = PFS_NO_ERRORS;
 	for (int i = 0; i < DETECTORS_NUMBER; i++)
 	{
-		err = err || pfs_step(bft->fs[i], &focusdes_triggered, xs[i]);
-		if (focusdes_triggered) triggered_detectors++;
+		err = pfs_step(bft->fs[i], &focusdes_triggered, xs[i]);
+		if (err == PFS_ERROR_INVALID_INPUT) bitarray_set(bft->bitarray, i);
+		else if (focusdes_triggered) triggered_detectors++;
 	}
 	*got_trigger = triggered_detectors >= bft->majority;
-	return err == PFS_NO_ERRORS ? BFT_NO_ERRORS
-								: BFT_ERROR_INVALID_INPUT;
+
+	return bitarray_count(bft->bitarray) < bft->majority ? BFT_ERROR_INVALID_INPUT
+														 : BFT_NO_ERRORS;
 }
 
 /**
@@ -196,10 +236,10 @@ struct bft_changepoints bft_changes2changepoints(struct bft_changes c, size_t t)
  * @return : an error code.
  */
 enum bft_errors bft_interface(struct bft_changepoints* cps,
-	count_t* xss, size_t len,
-	double threshold_std, double mu_min,
-	double alpha, int m, int sleep,
-	int majority)
+		const count_t* xss, size_t len,
+		double threshold_std, double mu_min,
+		double alpha, int m, int sleep,
+		int majority)
 {
 	// inititalization can fail either because of wrong inputs,
 	// or because failed allocation for curve stack.
@@ -215,14 +255,15 @@ enum bft_errors bft_interface(struct bft_changepoints* cps,
 		return err;
 	}
 
-	bool got_trigger;
+	bool got_trigger = false;
 	size_t t;
 	for (t = 0; t < len; t++)
 	{
 		count_t xs[DETECTORS_NUMBER];
-        size_t i; for (i = 0; i < DETECTORS_NUMBER; i++) xs[i] = xss[i * len + t];
+		size_t i;
+		for (i = 0; i < DETECTORS_NUMBER; i++) xs[i] = xss[i * len + t];
 
-        err = bft_step(bft, &got_trigger, xs);
+		err = bft_step(bft, &got_trigger, xs);
 
 		if (err == BFT_ERROR_INVALID_INPUT)
 		{
