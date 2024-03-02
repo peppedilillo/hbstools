@@ -61,6 +61,7 @@ def _format(
     postinterval_start_seconds: float,  # binning * skip
 ) -> Callable:
     """Sets the duration and extremes for a TTI's pre- and post- trigger interval."""
+
     def _format_result(
         result: ChangepointMET,
         gti: GTI,
@@ -92,6 +93,7 @@ def _format(
 
 def as_dataframe(func):
     """Transforms a TTI list to a pandas Dataframe"""
+
     @wraps(func)
     def wrapper(*args, **kwargs) -> pd.DataFrame:
         return pd.DataFrame(
