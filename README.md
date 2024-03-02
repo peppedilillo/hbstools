@@ -1,4 +1,5 @@
 # HERMES Burst Search Tools
+
 The HERMES Burst Search Tools is a software collection of tools for finding transients
 in data from the HERMES nanosatellite constellation. This software was developed in a collaboration between
 the Italian National Institute for Astrophysics and the Italian Space Agency.
@@ -24,16 +25,16 @@ You're set, great!
 
 BUT STOP A MOMENT. 
 
-If you are unfamiliar with Python, python packages, virtual environments, never did this before or if you have problems, we have the..
+Maybe this does not make sense to you, or you got into some problem. In this case here's the..
 
 ## ..Long version
 
-1. If you are unsure whether you are on Anaconda or you are not, open a terminal and type ```which python``` (if on GNU-Linux or Mac) or ```gcm python``` (if on Windows). You should get a path to your Python executable this way. If you see some `anaconda` there (e.g., `C:\Users\peppe\anaconda3\envs\hbstools`), you are on anaconda, unless you really like snakes.
+1. If you are unsure whether you are on Anaconda or you are not, open a terminal and type ```which python``` (if on GNU-Linux or Mac) or ```gcm python``` (if on Windows). You should get a path to your Python executable this way. If you see some `anaconda` there (e.g., `C:\Users\username\anaconda3\..`), you are on anaconda, unless you really like snakes.
 
 ### If you are on anaconda:
 
 2. Download this repository from the green button on the top right and unzip, or `git clone https://github.com/peppedilillo/hbstools.git` if you have git installed.
-3. Move with the terminal to where you downloaded this repo and run `conda env create -f conda-env.yml`. This will create an environment where only hbstools is installed.
+3. Move with the terminal to where you downloaded this repo and run `conda env create -f conda-env.yml`. This will create an environment where only hbstools is installed, so that we don't mess with your other packages and they don't mess with us.
 4. Activate the environment with `conda activate hbstools`.
 
 That's it. Try `mercury --help` or `import hbstools` from the Python REPL to make sure everything it's working.
@@ -54,8 +55,8 @@ If you need to interact with the actual code to modify it, or do some other dev 
 
 ### Troubleshooting
 
-* For obscure reasons, making the conda environment yourself (e.e. with `conda create -n ..`) and running `git+https://github.com/peppedilillo/hbstools.git` won't set any script (includin `mercury`) in your PATH, so either don't do that (use the `conda-env.yml`, as we talk above) or add `mercury` to PATH.
-* We are providing some C code. Don't worry, the installer will take care of compiling that but make sure you have a compiler installed on your machine. If you are on Windows, installing Visual Studio should suffice, if you are on Mac install XCode, if you are on GNU-Linux you should be set already.
+* For obscure reasons, making the conda environment yourself (e.e. with `conda create -n ..`) and running `git+https://github.com/peppedilillo/hbstools.git` may not set any script (includin `mercury`) in your PATH, so either don't do that (use the `conda-env.yml`, or `pip install .` from source, as we talk above), or add `mercury` to your PATH, as a warning will tell you.
+* We provide C code. Don't worry, the installer will take care of compiling that for you but make sure you have a compiler installed on your machine. If you are on Windows, installing Visual Studio should suffice, if you are on Mac install XCode, if you are on GNU-Linux you should be set already.
 
 > ❗ **Always remember to activate your environment**, otherwise you won't be able to use hbstools or mercury.
 
@@ -63,7 +64,7 @@ If you need to interact with the actual code to modify it, or do some other dev 
 ## Uninstalling
 
 Either run `conda env remove -n hbstools` (if you are using Anaconda) or put the `venv-hbstools` in the trashbin.
-If you downloaded the source code you can trash it away too.
+If you downloaded the source code you can trash it.
 
 # Algorithms
 With HBStools come multiple implementations of Poisson-FOCuS and background estimators.
@@ -86,9 +87,9 @@ For more informations on these parameters, try `mercury --drop .`.
 
 ### BFT9000
 
-![bft](assets/bft.png)
+![bft](assets/doombfg.png)
 
-The BFT (Big _FOCuS_ Trigger) is our "flagship" algorithm right now.
+The BFT (Big FOCuS Trigger) is our "flagship" algorithm right now.
 It is an optimized C implementation of four Poisson-FOCuS algorithm with automatic background estimate by single exponential smoothing. All algorithms work independently of each other, over data from different detectors. A trigger pass through only if a commandable number of trigger algorithm (majority vote) are found over threshold at the same time. If bad data are passed to one of the algorithms, that algorithm is shut down, but
 BFT keeps running untila trigger is found or the number of corrupted algorithms if greater than the voting majority.
 
