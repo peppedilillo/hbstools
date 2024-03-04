@@ -25,7 +25,7 @@ You're set, great!
 
 BUT STOP A MOMENT. 
 
-Maybe this does not make sense to you, or you got into some problem. In this case here's the..
+Maybe this does not make sense, or you got into some problem. In this case here's the..
 
 ## ..Long version
 
