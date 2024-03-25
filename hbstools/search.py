@@ -22,13 +22,9 @@ def search_set(
 ):
     """Pepare a trigger algorithms and store parameters. Keep this pure."""
 
-    def search_run(
-        data_stream: Iterable[tuple[pd.DataFrame, GTI]]
-    ) -> dict[GTI, list[ChangepointMET]]:
+    def search_run(data_stream: Iterable[tuple[pd.DataFrame, GTI]]) -> dict[GTI, list[ChangepointMET]]:
         """Launch the search on every data table."""
-        return {
-            gti: run(filter_energy(data, energy_lims), gti) for data, gti in data_stream
-        }
+        return {gti: run(filter_energy(data, energy_lims), gti) for data, gti in data_stream}
 
     run = log(trig.trigger_df_set(binning, skip, algorithm_params))
     return search_run
@@ -53,11 +49,7 @@ def search_log(write: Callable):
             except ValueError:
                 write(f"[red]Error: invalid algorithm input.[/]")
                 return []
-            (
-                write(f"Found [b]{len(rs)}[/] transient{'s' if len(rs) > 1 else ''}")
-                if rs
-                else None
-            )
+            (write(f"Found [b]{len(rs)}[/] transient{'s' if len(rs) > 1 else ''}") if rs else None)
             for r in rs:
                 write(f"[dim]|- MET {r[2]:1.1f}, (+{r[2] - gti.start:1.1f} s).[/]")
             return rs

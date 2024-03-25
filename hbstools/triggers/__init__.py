@@ -6,9 +6,7 @@ class TriggerAlgorithm:
 
     def _asdict(self) -> dict[str, Any]:
         """From Ramalho's Fluent Python 2ed."""
-        return {
-            name: getattr(self, name) for name, attr in self.__class__.__dict__.items()
-        }
+        return {name: getattr(self, name) for name, attr in self.__class__.__dict__.items()}
 
     def __repr__(self) -> str:
         """From Ramalho's Fluent Python 2ed."""

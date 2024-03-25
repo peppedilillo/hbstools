@@ -119,8 +119,4 @@ def format_results(
         intervals_duration_seconds,
         postinterval_start_seconds,
     )
-    return [
-        format_result(changepoint, gti)
-        for gti, cps in results.items()
-        for changepoint in cps
-    ]
+    return [format_result(changepoint, gti) for gti, cps in results.items() for changepoint in cps]

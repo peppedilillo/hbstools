@@ -295,9 +295,7 @@ def search_record_input(ctx: click.Context, param: click.Option, value: Path) ->
     return value
 
 
-def search_validate_config(
-    ctx: click.Context, param: click.Option, value: Path | None
-) -> dict:
+def search_validate_config(ctx: click.Context, param: click.Option, value: Path | None) -> dict:
     """Validates user configuration option and records it."""
 
     def validate_config(config_path: Path | None) -> dict:
@@ -348,9 +346,7 @@ def validate_output(output: Path, filename: str) -> Path:
         return output
 
 
-def search_validate_output(
-    ctx: click.Context, param: click.Option, value: Path
-) -> Path:
+def search_validate_output(ctx: click.Context, param: click.Option, value: Path) -> Path:
     """Validate user output choice and records it"""
     try:
         output = validate_output(
@@ -358,9 +354,7 @@ def search_validate_output(
             "mercury-results.fits",
         )
     except FileExistsError:
-        raise click.BadParameter(
-            f"Can not create file, a file '{value}' already exists."
-        )
+        raise click.BadParameter(f"Can not create file, a file '{value}' already exists.")
     ctx.obj["seach_output"] = value
     return output
 
@@ -377,8 +371,7 @@ def search_validate_output(
     "configuration",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     callback=search_validate_config,
-    help="Path to a YAML configuration file. "
-    "If not provided, values from a default configuration are used.",
+    help="Path to a YAML configuration file. " "If not provided, values from a default configuration are used.",
 )
 @click.option(
     "-o",
@@ -446,9 +439,7 @@ def drop_validate_output(ctx: click.Context, param: click.Option, value: Path) -
     try:
         output = validate_output(value, "mercury-config.yml")
     except FileExistsError:
-        raise click.BadParameter(
-            f"Can not create file, a file '{value}' already exists."
-        )
+        raise click.BadParameter(f"Can not create file, a file '{value}' already exists.")
     ctx.obj["drop_output"] = value
     return output
 
@@ -463,11 +454,7 @@ def drop_validate_output(ctx: click.Context, param: click.Option, value: Path) -
 def drop(ctx: click.Context, output: Path):
     """Saves a yaml configuration default stub."""
     console = init_console(with_logo=False)
-    config_text = (
-        write_yaml(read_yaml(default_config()))
-        if ctx.obj["quiet"]
-        else default_config()
-    )
+    config_text = write_yaml(read_yaml(default_config())) if ctx.obj["quiet"] else default_config()
     with open(output, "w") as file:
         file.write(config_text)
     console.print(f"[bold]Created configuration file '{output}' :sparkles:.")
