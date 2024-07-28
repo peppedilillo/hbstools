@@ -50,12 +50,15 @@ Try `mercury --help` or `import hbstools` from the Python REPL to make sure ever
 
 #### Installing from source
 
-Both the methods above will fetch the source from this github repo, so you won't be able to change the code yourself with ease.
-If you need to interact with the actual code to modify it, or do some other dev work, the process is similiar but you'll need to install from your local copy of the source code. To achieve this, 1. create an environment; 2. download the repo, unzip it, and move there from terminal; 3. make your changes; 4. activate the environment and run `pip install .`. 
+The methods above will fetch the source from this github repo, so you won't be able to change the code yourself with ease.
+If you need to interact with the actual code to modify it, or do some other dev work, the process is similiar but you'll need to install from your local copy of the source code. To achieve this:
+1. Make sure you have an environment set, you can create a blank one with `python3 -m venv hbstools-venv`;
+2. Download this repo and make your changes;
+3. To see the effect of your changes `pip install .` within the environment and from the source's folder, or `pip install '.[dev]'` for a bunch of extra useful packages. 
 
 ### Running tests:
 
-Make sure to have installed the software and activated its environment, then move to the `hbstools/test` folder and run `python -m unittest -v`. 
+Activated your environment, then move to the `hbstools/test` folder and run `python -m unittest -v`. 
 
 ### Troubleshooting
 
