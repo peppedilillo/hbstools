@@ -1,5 +1,5 @@
-from math import isclose
 import unittest
+from math import isclose
 
 import numpy as np
 import pandas as pd

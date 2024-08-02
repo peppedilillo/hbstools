@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from astropy.io import fits  # type: ignore[import-untyped]
 import pandas as pd
+from astropy.io import fits  # type: ignore[import-untyped]
 from pandas.api.types import CategoricalDtype
 
 from hbstools.types import GTI
@@ -27,11 +27,14 @@ def read_gti_files(data_folder: str | Path) -> list[GTI]:
         """Returns a list of GTI from file path."""
         with fits.open(gti_path) as hdul:
             return [GTI(*map(float, content)) for content in hdul[1].data]
+
     return _read_gti_files(path_gtis(data_folder))
 
 
 def read_event_files(data_folder: str | Path) -> pd.DataFrame:
-    def _read_event_files(xdata_path: str | Path, sdata_path: str | Path) -> pd.DataFrame:
+    def _read_event_files(
+        xdata_path: str | Path, sdata_path: str | Path
+    ) -> pd.DataFrame:
         """Opens the data files and merges them"""
         with fits.open(xdata_path) as hdul:
             xdata_df = pd.DataFrame(hdul[1].data)
@@ -44,6 +47,7 @@ def read_event_files(data_folder: str | Path) -> pd.DataFrame:
             .astype({"QUADID": category_quads_t})
             .reset_index(drop=True)
         )
+
     return _read_event_files(path_xdata(data_folder), path_sdata(data_folder))
 
 

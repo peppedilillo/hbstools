@@ -15,12 +15,14 @@ input_paths = [
     },
     {
         "data_100s_stronganomaly60s",
-    }
+    },
 ]
 
 output_gtis = [
     [
-        [GTI(0, 54),],
+        [
+            GTI(0, 54),
+        ],
         [GTI(51, 79), GTI(83, 108)],
         [GTI(108.5, 133), GTI(137, 161)],
         [GTI(162, 187), GTI(191, 216)],

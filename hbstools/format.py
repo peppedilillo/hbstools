@@ -3,10 +3,7 @@ from typing import Callable
 
 import pandas as pd
 
-from hbstools.types import ChangepointMET
-from hbstools.types import GTI
-from hbstools.types import MET
-from hbstools.types import TTI
+from hbstools.types import GTI, MET, TTI, ChangepointMET
 
 FCOLS = [
     "bkg_pre_start",
@@ -119,4 +116,8 @@ def format_results(
         intervals_duration_seconds,
         postinterval_start_seconds,
     )
-    return [format_result(changepoint, gti) for gti, cps in results.items() for changepoint in cps]
+    return [
+        format_result(changepoint, gti)
+        for gti, cps in results.items()
+        for changepoint in cps
+    ]

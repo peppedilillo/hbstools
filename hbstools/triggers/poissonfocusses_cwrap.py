@@ -10,8 +10,7 @@ from typing import Callable
 import numpy as np
 import numpy.typing as npt
 
-from hbstools.triggers import _LIBCFOCUS
-from hbstools.triggers import TriggerAlgorithm
+from hbstools.triggers import _LIBCFOCUS, TriggerAlgorithm
 from hbstools.types import Changepoint
 
 clib_pfs = ctypes.CDLL(_LIBCFOCUS)

@@ -9,9 +9,9 @@ from schema import Optional  # type: ignore[import-untyped]
 from schema import Schema  # type: ignore[import-untyped]
 from schema import SchemaError  # type: ignore[import-untyped]
 from schema import Use  # type: ignore[import-untyped]
+from yaml import YAMLError
 from yaml import dump as write_yaml
 from yaml import safe_load as read_yaml
-from yaml import YAMLError
 
 import hbstools as hbs
 
@@ -253,7 +253,9 @@ def crawler(
                 return False
         return True
 
-    def check_subdirs(subdirs: list[Path], ts, rlim: int, recursion_acc: int, acc: set[Path]):
+    def check_subdirs(
+        subdirs: list[Path], ts, rlim: int, recursion_acc: int, acc: set[Path]
+    ):
         if not subdirs:
             return []
         car, *cdr = subdirs
@@ -291,13 +293,17 @@ def cli(ctx: click.Context, quiet: bool):
     return
 
 
-def search_record_directory(ctx: click.Context, param: click.Option, path: Path) -> Path:
+def search_record_directory(
+    ctx: click.Context, param: click.Option, path: Path
+) -> Path:
     """Records user input argument for directory to be searched"""
     ctx.obj["search_input"] = path
     return path
 
 
-def search_validate_config(ctx: click.Context, param: click.Option, config_path: Path | None) -> dict:
+def search_validate_config(
+    ctx: click.Context, param: click.Option, config_path: Path | None
+) -> dict:
     """Validates user configuration option and records it."""
     # checks that the YAML config is well written, with well-defined values.
     try:
@@ -350,7 +356,9 @@ def search_validate_output(ctx: click.Context, param: click.Option, path: Path) 
             "mercury-results.fits",
         )
     except FileExistsError:
-        raise click.BadParameter(f"Can not create file, a file '{path}' already exists.")
+        raise click.BadParameter(
+            f"Can not create file, a file '{path}' already exists."
+        )
     ctx.obj["seach_output"] = path
     return output
 
@@ -367,7 +375,8 @@ def search_validate_output(ctx: click.Context, param: click.Option, path: Path) 
     "configuration",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     callback=search_validate_config,
-    help="Path to a YAML configuration file. " "If not provided, values from a default configuration are used.",
+    help="Path to a YAML configuration file. "
+    "If not provided, values from a default configuration are used.",
 )
 @click.option(
     "-o",
@@ -435,7 +444,9 @@ def drop_validate_output(ctx: click.Context, param: click.Option, path: Path) ->
     try:
         output = validate_output(path, "mercury-config.yml")
     except FileExistsError:
-        raise click.BadParameter(f"Can not create file, a file '{path}' already exists.")
+        raise click.BadParameter(
+            f"Can not create file, a file '{path}' already exists."
+        )
     ctx.obj["drop_output"] = path
     return output
 
@@ -450,7 +461,11 @@ def drop_validate_output(ctx: click.Context, param: click.Option, path: Path) ->
 def drop(ctx: click.Context, output: Path):
     """Saves a yaml configuration default stub."""
     console = init_console(with_logo=False)
-    config_text = write_yaml(read_yaml(default_config())) if ctx.obj["quiet"] else default_config()
+    config_text = (
+        write_yaml(read_yaml(default_config()))
+        if ctx.obj["quiet"]
+        else default_config()
+    )
     with open(output, "w") as file:
         file.write(config_text)
     console.print(f"[bold]Created configuration file '{output}' :sparkles:.")

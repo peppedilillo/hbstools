@@ -53,6 +53,7 @@ def merge_overlapping_gtis(gtis: list[GTI], tolerance: float = 1.0) -> list[tupl
             else:
                 return [first] + f([second, *cdr])
         return xs
+
     return f(gtis)
 
 

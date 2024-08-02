@@ -3,9 +3,7 @@ An implementation of Poisson FOCuS with optimizations.
 See Ward 2023 & Dilillo 2024.
 """
 
-from math import inf
-from math import log
-from math import sqrt
+from math import inf, log, sqrt
 from typing import Sequence
 
 from hbstools.triggers import TriggerAlgorithm

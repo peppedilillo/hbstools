@@ -7,8 +7,7 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
-from hbstools.io import read_event_files
-from hbstools.io import read_gti_files
+from hbstools.io import read_event_files, read_gti_files
 from hbstools.types import GTI, MET, Dataset
 
 
@@ -20,8 +19,10 @@ def catalog(data_folders: Iterable[Path | str]) -> Dataset:
 
     def is_sorted(xs):
         return len(xs) < 2 or reduce(lambda acc, x: acc and x[0] < x[1], pairwise(xs))
-    assert (is_sorted([gti.start for gtis in sorted_gtis for gti in gtis]) and
-            is_sorted([gti.end for gtis in sorted_gtis for gti in gtis]))
+
+    assert is_sorted([gti.start for gtis in sorted_gtis for gti in gtis]) and is_sorted(
+        [gti.end for gtis in sorted_gtis for gti in gtis]
+    )
     return [(gti, dp) for gtis, dp in zip(sorted_gtis, sorted_folders) for gti in gtis]
 
 
@@ -31,7 +32,9 @@ def catalog(data_folders: Iterable[Path | str]) -> Dataset:
 # estimate of the background. other than the dataframe itself a gti is returned.
 # this gtis annotates the data chunk's start and end time. this information is useful
 # to perform further processing (e.g. formatting) of trigger events.
-def stream(dataset: Dataset, abs_tol: float = .5) -> Iterable[tuple[GTI, pd.DataFrame]]:
+def stream(
+    dataset: Dataset, abs_tol: float = 0.5
+) -> Iterable[tuple[GTI, pd.DataFrame]]:
     """This function takes a dataset and returns an iterator, which will get you
     a (gti, DataFrame) tuple a time. The intended usage goes like:
     ```
@@ -39,6 +42,7 @@ def stream(dataset: Dataset, abs_tol: float = .5) -> Iterable[tuple[GTI, pd.Data
         run trigger on df
     ```
     """
+
     def overlap(x: GTI, y: GTI, abs_tol: float) -> bool:
         """`x` overlaps `y` if `x` starts before or at the end of `y`"""
         assert x.start < y.end
@@ -56,7 +60,9 @@ def stream(dataset: Dataset, abs_tol: float = .5) -> Iterable[tuple[GTI, pd.Data
             last_df = between(df, *gti)
             last_gti = gti
         else:
-            last_df = pd.concat((last_df, between(df, max(last_gti.end, gti.start), gti.end)))
+            last_df = pd.concat(
+                (last_df, between(df, max(last_gti.end, gti.start), gti.end))
+            )
             last_gti = GTI(last_gti.start, gti.end)
     yield last_df, last_gti
     return
@@ -117,7 +123,10 @@ def histogram_quadrants(
     _, bins = _histogram(pd.Series([]), gti.start, gti.end, binning)
     return (
         np.vstack(
-            [histogram(quadrant_data, gti, binning)[0] for _, quadrant_data in data.groupby("QUADID", observed=False)]
+            [
+                histogram(quadrant_data, gti, binning)[0]
+                for _, quadrant_data in data.groupby("QUADID", observed=False)
+            ]
         ),
         bins,
     )

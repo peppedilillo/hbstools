@@ -6,7 +6,9 @@ class TriggerAlgorithm:
 
     def _asdict(self) -> dict[str, Any]:
         """From Ramalho's Fluent Python 2ed."""
-        return {name: getattr(self, name) for name, attr in self.__class__.__dict__.items()}
+        return {
+            name: getattr(self, name) for name, attr in self.__class__.__dict__.items()
+        }
 
     def __repr__(self) -> str:
         """From Ramalho's Fluent Python 2ed."""
@@ -17,8 +19,8 @@ class TriggerAlgorithm:
 def _library_path(libname: str) -> str:
     """Gets the path to the C shared library, with appropriate extension.
     Assumes the library and this file to be installed in the same directory"""
-    from pathlib import Path
     import sys
+    from pathlib import Path
 
     if sys.platform.startswith("win32"):
         suffix = ".dll"

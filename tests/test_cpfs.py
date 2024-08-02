@@ -1,9 +1,9 @@
-from pathlib import Path
 import unittest
+from pathlib import Path
 
+import hbstools.triggers.poissonfocusses_cwrap as cpfs
 from hbstools.search import search
 from hbstools.trigger import trigger_match
-import hbstools.triggers.poissonfocusses_cwrap as cpfs
 from hbstools.types import GTI
 
 dataset_directory = Path(__file__).parent / "data_100s_stronganomaly60s/"
