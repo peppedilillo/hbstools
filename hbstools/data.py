@@ -1,80 +1,71 @@
+from functools import reduce
+from itertools import pairwise
 from math import isclose
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Iterable
 
 import numpy as np
 import pandas as pd
 
 from hbstools.io import read_event_files
 from hbstools.io import read_gti_files
-from hbstools.types import GTI
+from hbstools.types import GTI, MET, Dataset
 
 
-def merge_overlapping_gtis(gtis: list[GTI], tolerance: float = 1.0) -> list[tuple]:
-    """Merges CDI if they overlap. eg:
-    F([(1, 2), (3, 4), (4, 5)]) = [(1, 2), (3, 5)]"""
+def catalog(data_folders: Iterable[Path | str]) -> Dataset:
+    """Takes an unordered collection of paths, orders them and returns a Dataset."""
+    unsorted_gtis = {dp: read_gti_files(dp) for dp in data_folders}
+    sorted_folders = sorted(data_folders, key=lambda d: unsorted_gtis[d][0].start)
+    sorted_gtis = [unsorted_gtis[dp] for dp in sorted_folders]
 
-    def overlap(x: GTI, y: GTI, abs_tol: float):
+    def is_sorted(xs):
+        return len(xs) < 2 or reduce(lambda acc, x: acc and x[0] < x[1], pairwise(xs))
+    assert (is_sorted([gti.start for gtis in sorted_gtis for gti in gtis]) and
+            is_sorted([gti.end for gtis in sorted_gtis for gti in gtis]))
+    return [(gti, dp) for gtis, dp in zip(sorted_gtis, sorted_folders) for gti in gtis]
+
+
+# this functions collates different datasets together, if the datasets are "adjacent"
+# in time. the reason for doing this is to minimize the times in which we restart the
+# trigger algorithm because at each restart a dead time is required to initialize an
+# estimate of the background. other than the dataframe itself a gti is returned.
+# this gtis annotates the data chunk's start and end time. this information is useful
+# to perform further processing (e.g. formatting) of trigger events.
+def stream(dataset: Dataset, abs_tol: float = .5) -> Iterable[tuple[GTI, pd.DataFrame]]:
+    """This function takes a dataset and returns an iterator, which will get you
+    a (gti, DataFrame) tuple a time. The intended usage goes like:
+    ```
+    for gti, df in stream(dataset):
+        run trigger on df
+    ```
+    """
+    def overlap(x: GTI, y: GTI, abs_tol: float) -> bool:
         """`x` overlaps `y` if `x` starts before or at the end of `y`"""
         assert x.start < y.end
         return isclose(x.end, y.start, abs_tol=abs_tol) or (y.start < x.end)
 
-    def f(xs: Sequence[GTI]):
-        if len(xs) == 2:
-            first, second = xs
-            if overlap(first, second, tolerance):
-                return [GTI(first.start, second.end)]
-        if len(xs) > 2:
-            first, second, *cdr = xs
-            if overlap(first, second, tolerance):
-                return f([GTI(first.start, second.end)] + cdr)
-            else:
-                return [first] + f([second, *cdr])
-        return xs
+    def between(df, start_time: MET, end_time: MET) -> pd.DataFrame:
+        return df[(df["TIME"] >= start_time) & (df["TIME"] < end_time)]
 
-    return f(gtis)
-
-
-def get_data(data_folders: Sequence[Path | str]) -> Iterable[tuple[pd.DataFrame, GTI]]:
-    """A generator which will get you one GTI dataframe a time."""
-
-    def after(df, time):
-        return df[df["TIME"] >= time]
-
-    def before(df, time):
-        return df[df["TIME"] < time]
-
-    def between(df, start_time, end_time):
-        return before(after(df, start_time), end_time)
-
-    def concatenate(df1, df2):
-        first_time = df2["TIME"].iloc[0]
-        return pd.concat((before(df1, first_time), df2))
-
-    def f(gtis, files, df):
-        if len(gtis) == 0:
-            return
-        gti, *_ = gtis
-        if gti.end > df["TIME"].iloc[-1]:
-            if not files:
-                yield after(df, gti.start), gti
-                return
-            new_file, *_ = files
-            yield from f(gtis, files[1:], concatenate(df, read_event_files(new_file)))
+    (last_gti, data_folder), *dataset = dataset
+    last_df = between(read_event_files(data_folder), *last_gti)
+    for gti, data_folder in dataset:
+        df = read_event_files(data_folder)
+        if not overlap(last_gti, gti, abs_tol):
+            yield last_df, last_gti
+            last_df = between(df, *gti)
+            last_gti = gti
         else:
-            yield between(df, gti.start, gti.end), gti
-            yield from f(gtis[1:], files, after(df, gti.end))
-
-    sorted_folders = sorted(data_folders, key=lambda d: read_gti_files(d)[0].start)
-    all_gtis = [gti for gtis in [read_gti_files(dp) for dp in sorted_folders] for gti in gtis]
-    gtis = merge_overlapping_gtis(all_gtis)
-    return f(gtis, sorted_folders[1:], read_event_files(sorted_folders[0]))
+            last_df = pd.concat((last_df, between(df, max(last_gti.end, gti.start), gti.end)))
+            last_gti = GTI(last_gti.start, gti.end)
+    yield last_df, last_gti
+    return
 
 
 def filter_energy(
     data: pd.DataFrame,
     energy_lims: tuple[float, float],
-):
+) -> pd.DataFrame:
     """Filters data in an energy band."""
     low, hi = energy_lims
     return data[(data["ENERGY"] >= low) & (data["ENERGY"] < hi)]
@@ -96,6 +87,7 @@ def _histogram(
         range=(start, start + num_intervals * binning),
         bins=num_intervals,
     )
+    # TODO: swap order of return
     return counts, bins
 
 
@@ -111,6 +103,7 @@ def histogram(
         gti.end,
         binning,
     )
+    # TODO: swap order of return
     return counts, bins
 
 
@@ -120,6 +113,7 @@ def histogram_quadrants(
     binning: float,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Bins data in time, separating data from different quadrants."""
+    # TODO: swap order of return
     _, bins = _histogram(pd.Series([]), gti.start, gti.end, binning)
     return (
         np.vstack(

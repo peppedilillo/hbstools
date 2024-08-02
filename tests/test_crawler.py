@@ -4,12 +4,14 @@ import unittest
 from mercury.mercury import crawler
 
 inputs = [
+    ("crawler_test", ["file1", "file2"]),
     ("crawler_test", ["file1", "file2", "file3"], 1),
     ("crawler_test", ["file1", "file2", "file3"], 2),
     ("crawler_test", ["file1", "file2", "file3"], 3),
 ]
 
 outputs = [
+    [Path("crawler_test").joinpath("d4"), Path("crawler_test").joinpath("d5")],
     [Path("crawler_test").joinpath("d4")],
     [Path("crawler_test").joinpath("d4"), Path("crawler_test").joinpath("d2/d2_3")],
     [

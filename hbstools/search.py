@@ -1,12 +1,13 @@
 from pathlib import Path
-from typing import Callable, Iterable, Sequence
+from typing import Callable, Iterable
 
 import pandas as pd
 from rich.console import Console
 from rich.progress import track
 
 from hbstools.data import filter_energy
-from hbstools.data import get_data
+from hbstools.data import catalog
+from hbstools.data import stream
 from hbstools.format import format_results
 import hbstools.trigger as trig
 from hbstools.types import ChangepointMET
@@ -60,22 +61,31 @@ def search_log(write: Callable):
 
 
 def search(
-    data_folders: Sequence[Path | str],
+    data_folders: Iterable[Path | str],
     configuration: dict,
     console: Console | None = None,
 ):
-    """An interface to search."""
+    """
+    An interface to search.
+
+    :param data_folders: an iterable for the inputs. file ordering is not assumed.
+    :param configuration: an algorithm configuration.
+    :param console: a rich console for writing.
+    TODO: change console to a Callable.
+    :return:
+    """
+    dataset = catalog(data_folders)
     if console is not None:
         _log = search_log(console.log)
         data_stream = track(
-            get_data(data_folders),
+            stream(dataset),
             description="[dim cyan](Running..)",
             transient=True,
             console=console,
         )
     else:
         _log = search_log(lambda _: None)
-        data_stream = get_data(data_folders)
+        data_stream = stream(dataset)
 
     algorithm_params = configuration["algorithm_params"]
     return format_results(

@@ -7,6 +7,7 @@ project(
     ],
 )
 add_global_arguments(language : 'c')
+add_project_link_arguments('-lm', language : 'c')
 
 py = import('python').find_installation()
 

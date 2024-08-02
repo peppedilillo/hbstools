@@ -1,6 +1,6 @@
 from math import log10
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Sequence
 
 import click
 from rich.console import Console
@@ -237,36 +237,38 @@ def parse_user_else_default_config(config_path: Path | None) -> dict:
 
 def crawler(
     directory: Path | str,
-    target: list[str],
-    recursion_limit: int = 2,
-) -> list[Path]:
-    """Crawls through folder looking for subfolders containing a specific set of files."""
+    targets: Sequence[str],
+    recursion_limit: int = 1,
+) -> set[Path]:
+    """Crawls through folder looking for subfolders containing a specific set of files.
+    if `recursion_limit=0`  we only check the present folder, ignoring its subdirectories.
+    We return a set, which has no meaningful order."""
 
-    def get_subdirs(dir_: Path) -> list[Path]:
-        return [d for d in dir_.iterdir() if d.is_dir()]
+    def get_subdirs(d: Path) -> list[Path]:
+        return [f for f in d.iterdir() if f.is_dir()]
 
-    def directory_contains(dir_: Path, target: list[Path]) -> bool:
-        for file in target:
-            if not dir_.joinpath(file).is_file():
+    def directory_contains(d: Path, ts) -> bool:
+        for file in ts:
+            if not d.joinpath(file).is_file():
                 return False
         return True
 
-    def check_subdirs(subdirs, lf, reclim, recnum, acc):
+    def check_subdirs(subdirs: list[Path], ts, rlim: int, recursion_acc: int, acc: set[Path]):
         if not subdirs:
             return []
         car, *cdr = subdirs
-        check_dir(car, lf, reclim, recnum + 1, acc)
-        check_subdirs(cdr, lf, reclim, recnum, acc)
+        check_dir(car, ts, rlim, recursion_acc + 1, acc)
+        check_subdirs(cdr, ts, rlim, recursion_acc, acc)
 
-    def check_dir(dir_, lf, reclim, recnum: int, acc: list[Path]) -> list[Path]:
-        if directory_contains(dir_, lf):
-            acc.append(dir_)
-        if recnum == reclim:
+    def check_dir(d: Path, ts, rlim, recursion_acc: int, acc: set[Path]) -> set[Path]:
+        if recursion_acc == rlim + 1:
             return acc
-        check_subdirs(get_subdirs(dir_), lf, reclim, recnum, acc)
+        if directory_contains(d, ts):
+            acc.add(d)
+        check_subdirs(get_subdirs(d), ts, rlim, recursion_acc, acc)
         return acc
 
-    return check_dir(Path(directory), target, recursion_limit, 0, [])
+    return check_dir(Path(directory), targets, recursion_limit, 0, set())
 
 
 @click.group()
@@ -289,23 +291,17 @@ def cli(ctx: click.Context, quiet: bool):
     return
 
 
-def search_record_input(ctx: click.Context, param: click.Option, value: Path) -> Path:
-    """Records user input argument"""
-    ctx.obj["search_input"] = value
-    return value
+def search_record_directory(ctx: click.Context, param: click.Option, path: Path) -> Path:
+    """Records user input argument for directory to be searched"""
+    ctx.obj["search_input"] = path
+    return path
 
 
-def search_validate_config(ctx: click.Context, param: click.Option, value: Path | None) -> dict:
+def search_validate_config(ctx: click.Context, param: click.Option, config_path: Path | None) -> dict:
     """Validates user configuration option and records it."""
-
-    def validate_config(config_path: Path | None) -> dict:
-        """Checks that the YAML is well written, with well-defined values."""
-        config = parse_user_else_default_config(config_path)
-        config_schema.validate(config)
-        return config
-
+    # checks that the YAML config is well written, with well-defined values.
     try:
-        config = validate_config(value)
+        config = config_schema.validate(parse_user_else_default_config(config_path))
     except YAMLError:
         raise click.BadParameter("Cannot parse YAML configuration file.")
     except SchemaError as error:
@@ -320,12 +316,12 @@ def search_validate_config(ctx: click.Context, param: click.Option, value: Path 
 
     # store the algorithm name so that we can show it during execution.
     ctx.obj["search_algoname"] = str(algorithm_class(**algorithm_params))
-    ctx.obj["search_config"] = None if used_default_config() else value
+    ctx.obj["search_config"] = None if used_default_config() else config_path
     return config
 
 
 def validate_output(output: Path, filename: str) -> Path:
-    """Checks output choice and finds alternatives when appropriate."""
+    """Checks output choice and finds alternatives if files already exist."""
 
     def find_valid_name(file, num):
         if not file.exists():
@@ -346,16 +342,16 @@ def validate_output(output: Path, filename: str) -> Path:
         return output
 
 
-def search_validate_output(ctx: click.Context, param: click.Option, value: Path) -> Path:
-    """Validate user output choice and records it"""
+def search_validate_output(ctx: click.Context, param: click.Option, path: Path) -> Path:
+    """Validate user output path choice and records it"""
     try:
         output = validate_output(
-            value if value is not None else ctx.obj["search_input"],
+            path if path is not None else ctx.obj["search_input"],
             "mercury-results.fits",
         )
     except FileExistsError:
-        raise click.BadParameter(f"Can not create file, a file '{value}' already exists.")
-    ctx.obj["seach_output"] = value
+        raise click.BadParameter(f"Can not create file, a file '{path}' already exists.")
+    ctx.obj["seach_output"] = path
     return output
 
 
@@ -363,7 +359,7 @@ def search_validate_output(ctx: click.Context, param: click.Option, value: Path)
 @click.argument(
     "input_directory",
     type=click.Path(exists=True, file_okay=False, path_type=Path),
-    callback=search_record_input,
+    callback=search_record_directory,
 )
 @click.option(
     "-c",
@@ -434,13 +430,13 @@ def search(
     return
 
 
-def drop_validate_output(ctx: click.Context, param: click.Option, value: Path) -> Path:
-    """Validate user output choice and records it."""
+def drop_validate_output(ctx: click.Context, param: click.Option, path: Path) -> Path:
+    """Validate user output path choice and records it."""
     try:
-        output = validate_output(value, "mercury-config.yml")
+        output = validate_output(path, "mercury-config.yml")
     except FileExistsError:
-        raise click.BadParameter(f"Can not create file, a file '{value}' already exists.")
-    ctx.obj["drop_output"] = value
+        raise click.BadParameter(f"Can not create file, a file '{path}' already exists.")
+    ctx.obj["drop_output"] = path
     return output
 
 
