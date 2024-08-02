@@ -13,8 +13,6 @@ inputs = {
     "data_300s_constant/test_dataset_light7",
 }
 
-TOLERANCE = 1.0
-
 # key = merging tolerance
 # value = merged gtis
 out_gtis = {
@@ -29,7 +27,6 @@ out_gtis = {
         GTI(0, 79),
         GTI(83, 133),
         GTI(137, 161),
-        GTI(162, 187),
         GTI(162, 187),
         GTI(191, 216),
         GTI(217, 241),
@@ -50,7 +47,6 @@ class TestDataset(unittest.TestCase):
     def test_gtis(self):
         dataset = catalog(inputs)
         for abs_tol, expected_merged_gti in out_gtis.items():
-            abs_tol = 1.0
             expected_merged_gti = out_gtis[abs_tol]
             datastream = stream(dataset, abs_tol=abs_tol)
             for i, (df, gti) in enumerate(datastream):
