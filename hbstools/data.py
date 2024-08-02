@@ -26,6 +26,16 @@ def catalog(data_folders: Iterable[Path | str]) -> Dataset:
     return [(gti, dp) for gtis, dp in zip(sorted_gtis, sorted_folders) for gti in gtis]
 
 
+def _overlap(x: GTI, y: GTI, abs_tol: float) -> bool:
+    """`x` overlaps `y` if `x` starts before or at the end of `y`"""
+    assert x.start < y.end
+    return isclose(x.end, y.start, abs_tol=abs_tol) or (y.start < x.end)
+
+
+def _between(df, start_time: MET, end_time: MET) -> pd.DataFrame:
+    return df[(df["TIME"] >= start_time) & (df["TIME"] < end_time)]
+
+
 # this functions collates different datasets together, if the datasets are "adjacent"
 # in time. the reason for doing this is to minimize the times in which we restart the
 # trigger algorithm because at each restart a dead time is required to initialize an
@@ -35,36 +45,31 @@ def catalog(data_folders: Iterable[Path | str]) -> Dataset:
 def stream(
     dataset: Dataset, abs_tol: float = 0.5
 ) -> Iterable[tuple[GTI, pd.DataFrame]]:
-    """This function takes a dataset and returns an iterator, which will get you
+    """
+    This function takes a dataset and returns an iterator, which will get you
     a (gti, DataFrame) tuple a time. The intended usage goes like:
     ```
     for gti, df in stream(dataset):
         run trigger on df
-    ```
+
+    :param dataset: a dataset, see `catalog`
+    :param abs_tol: gtis closer than this are collated together
+    :return:
     """
-
-    def overlap(x: GTI, y: GTI, abs_tol: float) -> bool:
-        """`x` overlaps `y` if `x` starts before or at the end of `y`"""
-        assert x.start < y.end
-        return isclose(x.end, y.start, abs_tol=abs_tol) or (y.start < x.end)
-
-    def between(df, start_time: MET, end_time: MET) -> pd.DataFrame:
-        return df[(df["TIME"] >= start_time) & (df["TIME"] < end_time)]
-
-    (last_gti, data_folder), *dataset = dataset
-    last_df = between(read_event_files(data_folder), *last_gti)
-    for gti, data_folder in dataset:
-        df = read_event_files(data_folder)
-        if not overlap(last_gti, gti, abs_tol):
-            yield last_df, last_gti
-            last_df = between(df, *gti)
-            last_gti = gti
+    # fp is for filepath, `p` prefix is for `pointer` or `past`
+    (pgti, pfp), *dataset = dataset
+    df = read_event_files(pfp)
+    pdf = _between(df, *pgti)
+    for gti, fp in dataset:
+        df = read_event_files(fp) if fp != pfp else df
+        if not _overlap(pgti, gti, abs_tol):
+            yield pdf, pgti
+            pdf = _between(df, *gti)
+            pgti = gti
         else:
-            last_df = pd.concat(
-                (last_df, between(df, max(last_gti.end, gti.start), gti.end))
-            )
-            last_gti = GTI(last_gti.start, gti.end)
-    yield last_df, last_gti
+            pdf = pd.concat((pdf, _between(df, max(pgti.end, gti.start), gti.end)))
+            pgti = GTI(pgti.start, gti.end)
+    yield pdf, pgti
     return
 
 
