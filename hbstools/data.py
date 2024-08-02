@@ -101,14 +101,8 @@ def histogram(
     gti: GTI,
     binning: float,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """A specialized histogram for event lists."""
-    counts, bins = _histogram(
-        data["TIME"],
-        gti.start,
-        gti.end,
-        binning,
-    )
-    return counts, bins
+    """A specialized histogram to histogram time event lists."""
+    return _histogram(data["TIME"], *gti, binning)
 
 
 def histogram_quadrants(
@@ -117,13 +111,9 @@ def histogram_quadrants(
     binning: float,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Bins data in time, separating data from different quadrants."""
-    _, bins = _histogram(pd.Series([]), gti.start, gti.end, binning)
-    return (
-        np.vstack(
-            [
-                histogram(quadrant_data, gti, binning)[0]
-                for _, quadrant_data in data.groupby("QUADID", observed=False)
-            ]
-        ),
-        bins,
-    )
+    _, bins = _histogram(pd.Series([]), *gti, binning)
+    quadrant_counts = [
+        histogram(quadrant_data, gti, binning)[0]
+        for _, quadrant_data in data.groupby("QUADID", observed=False)
+    ]
+    return np.vstack(quadrant_counts), bins

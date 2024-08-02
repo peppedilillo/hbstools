@@ -25,9 +25,9 @@ You're set, great!
 
 BUT STOP A MOMENT. 
 
-Maybe this does not make sense, or you got into some problem. In this case here's the..
+Maybe this does not make sense, or you got into some problem. In this case here's the...
 
-## ..Long version
+## ...Long version
 
 1. If you are unsure whether you are on Anaconda or you are not, open a terminal and type ```which python``` (if on GNU-Linux or Mac) or ```gcm python``` (if on Windows). You should get a path to your Python executable this way. If you see some `anaconda` there (e.g., `C:\Users\username\anaconda3\..`), you are on anaconda, unless you really like snakes.
 
@@ -50,7 +50,7 @@ Try `mercury --help` or `import hbstools` from the Python REPL to make sure ever
 
 #### Installing from source
 
-The methods above will fetch the source from this github repo, so you won't be able to change the code yourself with ease.
+The methods above will fetch the source from this GitHub repo, so you won't be able to change the code yourself with ease.
 If you need to interact with the actual code to modify it, or do some other dev work, the process is similiar but you'll need to install from your local copy of the source code. To achieve this:
 1. Make sure you have an environment set, you can create a blank one with `python3 -m venv hbstools-venv`;
 2. Download this repo and make your changes;
@@ -90,7 +90,7 @@ meet one of the column in this table:
 | sleep         |       ✓       |      ✓     |     ✓    |   ✓   |
 | majority      |               |      ✓     |          |   ✓   |
 
-For more informations on these parameters, try `mercury --drop .`.
+For more information on these parameters, try `mercury --drop .`.
 
 ### BFT9000
 
