@@ -176,7 +176,7 @@ config_schema = Schema(
         ),
         "energy_lims": And(
             Use(tuple[float, float]),
-            lambda l: 0 <= l[0] < l[1],
+            lambda lim: 0 <= lim[0] < lim[1],
         ),
         "skip": And(
             lambda s: isinstance(s, int) & (s >= 0),

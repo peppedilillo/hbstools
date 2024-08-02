@@ -21,11 +21,11 @@ def search_set(
     """Pepare a trigger algorithms and store parameters. Keep this pure."""
 
     def search_run(
-        data_stream: Iterable[tuple[pd.DataFrame, GTI]]
+        datastream: Iterable[tuple[pd.DataFrame, GTI]]
     ) -> dict[GTI, list[ChangepointMET]]:
         """Launch the search on every data table."""
         return {
-            gti: run(filter_energy(data, energy_lims), gti) for data, gti in data_stream
+            gti: run(filter_energy(data, energy_lims), gti) for data, gti in datastream
         }
 
     run = log(trig.trigger_df_set(binning, skip, algorithm_params))
@@ -76,13 +76,12 @@ def search(
     :param data_folders: an iterable for the inputs. file ordering is not assumed.
     :param configuration: an algorithm configuration.
     :param console: a rich console for writing.
-    TODO: change console to a Callable.
     :return:
     """
     dataset = catalog(data_folders)
     if console is not None:
         _log = search_log(console.log)
-        data_stream = track(
+        datastream = track(
             stream(dataset),
             description="[dim cyan](Running..)",
             transient=True,
@@ -90,19 +89,19 @@ def search(
         )
     else:
         _log = search_log(lambda _: None)
-        data_stream = stream(dataset)
+        datastream = stream(dataset)
 
     algorithm_params = configuration["algorithm_params"]
+    search_run = search_set(
+        configuration["binning"],
+        configuration["skip"],
+        configuration["energy_lims"],
+        configuration["algorithm_params"],
+        _log,
+    )
+    results = search_run(datastream)
     return format_results(
-        results=search_set(
-            configuration["binning"],
-            configuration["skip"],
-            configuration["energy_lims"],
-            configuration["algorithm_params"],
-            _log,
-        )(
-            data_stream,
-        ),
+        results=results,
         intervals_duration_seconds=configuration["binning"] / algorithm_params["alpha"],
         preinterva_ends_seconds=configuration["binning"] * algorithm_params["m"],
         postinterval_start_seconds=configuration["binning"] * configuration["skip"],
