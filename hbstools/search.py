@@ -51,13 +51,10 @@ def search_log(write: Callable):
             except ValueError:
                 write(f"[red]Error: invalid algorithm input.[/]")
                 return []
-            (
+            if rs:
                 write(f"Found [b]{len(rs)}[/] transient{'s' if len(rs) > 1 else ''}")
-                if rs
-                else None
-            )
-            for r in rs:
-                write(f"[dim]|- MET {r[2]:1.1f}, (+{r[2] - gti.start:1.1f} s).[/]")
+                for r in rs:
+                    write(f"[dim]|- MET {r[2]:1.1f}, (+{r[2] - gti.start:1.1f} s).[/]")
             return rs
 
         return wrapper

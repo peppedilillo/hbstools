@@ -44,7 +44,7 @@ def _between(df, start_time: MET, end_time: MET) -> pd.DataFrame:
 # to perform further processing (e.g. formatting) of trigger events.
 def stream(
     dataset: Dataset, abs_tol: float = 0.5
-) -> Iterable[tuple[GTI, pd.DataFrame]]:
+) -> Iterable[tuple[pd.DataFrame, GTI]]:
     """
     This function takes a dataset and returns an iterator, which will get you
     a (gti, DataFrame) tuple a time. The intended usage goes like:
