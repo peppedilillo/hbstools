@@ -93,7 +93,6 @@ def _histogram(
         range=(start, start + num_intervals * binning),
         bins=num_intervals,
     )
-    # TODO: swap order of return
     return counts, bins
 
 
@@ -109,7 +108,6 @@ def histogram(
         gti.end,
         binning,
     )
-    # TODO: swap order of return
     return counts, bins
 
 
@@ -119,7 +117,6 @@ def histogram_quadrants(
     binning: float,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Bins data in time, separating data from different quadrants."""
-    # TODO: swap order of return
     _, bins = _histogram(pd.Series([]), gti.start, gti.end, binning)
     return (
         np.vstack(
