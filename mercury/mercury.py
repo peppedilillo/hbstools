@@ -419,13 +419,13 @@ def search(
     console.log(f"Algorithm {ctx.obj['search_algoname']} matches the configuration.")
 
     search_targets = ["gti.fits", "out_s_cl.evt", "out_x_cl.evt"]
-    dataset = crawler(input_directory, search_targets, recursion_limit)
-    if not dataset:
+    data_paths = crawler(input_directory, search_targets, recursion_limit)
+    if not data_paths:
         console.print("\nFound no data. Exiting.\n")
         return
+    console.log(f"Found {len(data_paths)} data folder{'' if len(data_paths) == 1 else 's'}.")
 
-    console.log(f"Found {len(dataset)} data folder{'' if len(dataset) == 1 else 's'}.")
-
+    dataset = hbs.data.catalog(data_paths)
     ttis = hbs.search(dataset, configuration, console=console)
     if ttis.empty:
         console.print("\nNo results to save. Exiting.\n")

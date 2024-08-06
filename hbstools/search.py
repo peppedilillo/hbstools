@@ -8,7 +8,7 @@ from rich.progress import track
 import hbstools.trigger as trig
 from hbstools.data import catalog, filter_energy, stream
 from hbstools.format import format_results
-from hbstools.types import GTI, ChangepointMET
+from hbstools.types import GTI, ChangepointMET, Dataset
 
 
 def search_set(
@@ -63,19 +63,18 @@ def search_log(write: Callable):
 
 
 def search(
-    data_folders: Iterable[Path | str],
+    dataset: Dataset,
     configuration: dict,
     console: Console | None = None,
 ):
     """
     An interface to search.
 
-    :param data_folders: an iterable for the inputs. file ordering is not assumed.
+    :param dataset: a dataset to be searched.
     :param configuration: an algorithm configuration.
     :param console: a rich console for writing.
     :return:
     """
-    dataset = catalog(data_folders)
     if console is not None:
         _log = search_log(console.log)
         datastream = track(

@@ -2,10 +2,11 @@ import unittest
 
 import hbstools.triggers.bft as bft
 from hbstools import search
+from hbstools.data import catalog
 from hbstools.trigger import trigger_match
 from hbstools.types import GTI
 
-dataset_directory = "./data_100s_stronganomaly60s/"
+data_paths = ["./data_100s_stronganomaly60s/"]
 
 TRIGTIME = 60
 gti = GTI(0.0, 100.0)
@@ -32,7 +33,8 @@ class TestBFT(unittest.TestCase):
         self.assertTrue(algorithm is bft.Bft)
 
     def test_it_runs(self):
-        results = search([dataset_directory], configuration)
+        dataset = catalog(data_paths)
+        results = search(dataset, configuration)
 
         self.assertTrue(len(results) == 1)
         self.assertTrue(abs(results["event_start"].iloc[0] - TRIGTIME) < 5)
