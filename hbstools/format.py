@@ -1,3 +1,50 @@
+"""
+# EVENT FORMATTING RULES
+
+This is a schematic representing the `bkg_pre`, `event` and `bkg_post` intervals.
+
+
+  BKG_PRE_INTERVAL                                             BKG_POST_INTERVAL
+(*<---pre_delta--->*)|....pre_t....|.........post_t.........|(*<---post_delta--->*)|
+                              trigger_time                  |
+                                   |                        |
+                      changepoint  |                        |
+                           |(*<-----post_t + tt - cp----->*)|
+                                    EVENT INTERVAL
+
+
+
+Given these durations, the interval start and end times are as follow:
+    * bkg_pre_start = trigger_time - (pre_t + pre_delta)
+    * bkg_pre_end = trigger_time - pre_t
+    * event_start = changepoint
+    * event_end = trigger_time + post_t
+    * bkg_post_start = trigger_time + post_t
+    * bkg_post_end = trigger_time + (post_t + post_delta)
+
+For a single exponential smoothing algorithm the interval timings are chosen so that:
+    * pre_delta = post_delta = (binning / alpha)
+    * pre_t = binning * m
+    * post_t = binning * skip
+
+Applying to the definition just above we have the following interval time, as a function
+of the algorithm's parameters:
+    * bkg_pre_start = trigger_time - binning * (m + 1 / alpha)
+    * bkg_pre_end = trigger_time - binning * m
+    * event_start = changepoint
+    * event_end = trigger_time + binning * skip
+    * bkg_post_start = trigger_time + binning * skip
+    * bkg_post_end = trigger_time + binning * (skip + 1/alpha)
+
+## Caveats:
+    1. it is possible for the changepoint to predate the end of the bkg interval if
+       an algorithms is launched with paramters `t_max` larger than `m`.
+    2. it is guaranteed that all intervals will fit in the event's GTI. if an interval
+       overcome the GTI boundaries, it is "squashed" enough to fit.
+    3. if an event occurs across different datafiles, and the GTI of the datafiles are
+       adjacent (overlap), the interval is not squashed.
+"""
+
 from functools import wraps
 from typing import Callable
 
@@ -17,80 +64,73 @@ FCOLS = [
 
 def compute_bkg_pre(
     trigtime: MET,
-    changepoint: MET,
     gti: GTI,
-    ends_seconds: float,
-    duration_seconds: float,
-) -> tuple[float, float]:
+    t: float,
+    delta: float,
+) -> tuple[MET, MET]:
     """Times from changepoint of an interval ending `m` steps behind the triggertime,
     with duration binning / alpha."""
-    if trigtime - ends_seconds - duration_seconds < gti.start:
-        start = -(changepoint - gti.start)
-        end = -ends_seconds + (trigtime - changepoint)
+    if trigtime - t - delta < gti.start:
+        start = gti.start
+        end = - t + trigtime
     else:
-        end = (trigtime - changepoint) - ends_seconds
-        start = end - duration_seconds
+        end = trigtime - t
+        start = end - delta
     return start, end
 
 
 def compute_bkg_post(
     trigtime: MET,
-    changepoint: MET,
     gti: GTI,
-    start_seconds: float,
-    duration_seconds: float,
-) -> tuple[float, float]:
+    t: float,
+    delta: float,
+) -> tuple[MET, MET]:
     """Times from changepoint of an interval starting after skip steps from triggertime,
     with duration binning / alpha."""
-    if trigtime + start_seconds + duration_seconds > gti.end:
-        end = gti.end - changepoint
-        start = max(end - duration_seconds, trigtime - changepoint)
+    if trigtime + t + delta > gti.end:
+        end = gti.end
+        start = max(end - delta, trigtime)
     else:
-        start = (trigtime - changepoint) + start_seconds
-        end = start + duration_seconds
+        start = trigtime + t
+        end = start + delta
     return start, end
 
 
 def _format(
-    preinterval_duration_seconds: float,  # (binning / alpha)
-    preinterva_ends_seconds: float,  # (binning * m)
-    postinterval_duration_seconds: float,  # binning / alpha
-    postinterval_start_seconds: float,  # binning * skip
+    pre_delta: float,  # (binning / alpha)
+    pre_t: float,  # (binning * m)
+    post_delta: float,  # binning / alpha
+    post_t: float,  # binning * skip
 ) -> Callable:
     """Sets the duration and extremes for a TTI's pre- and post- trigger interval."""
-
     def _format_result(
         result: ChangepointMET,
         gti: GTI,
     ) -> TTI:
-        """Transforms a single focus results (times expressed as mets) into a TTI event formatted like:
+        """Transforms a single focus results (times expressed as mets) into an event formatted like:
         (bkg_pres_start, bkg_pre_ends, event_starts, event_ends, bkg_post_start, bkg_post_end)
         """
         significance, changepoint, trigtime = result
         bkg_pre = compute_bkg_pre(
             trigtime,
-            changepoint,
             gti,
-            preinterva_ends_seconds,
-            preinterval_duration_seconds,
+            pre_t,
+            pre_delta,
         )
         bkg_post_start, bkg_post_end = compute_bkg_post(
             trigtime,
-            changepoint,
             gti,
-            postinterval_start_seconds,
-            postinterval_duration_seconds,
+            post_t,
+            post_delta,
         )
-        event_interval = changepoint, changepoint + bkg_post_start
+        event_interval = changepoint, bkg_post_start
         # noinspection PyTypeChecker
         return *bkg_pre, *event_interval, bkg_post_start, bkg_post_end
-
     return _format_result
 
 
 def as_dataframe(func):
     """Transforms a TTI list to a pandas Dataframe"""
-
     @wraps(func)
     def wrapper(*args, **kwargs) -> pd.DataFrame:
         return pd.DataFrame(
@@ -104,15 +144,15 @@ def as_dataframe(func):
 @as_dataframe
 def format_results(
     results: dict[GTI, list[ChangepointMET]],
-    intervals_duration_seconds: float,  # (binning / alpha)
-    preinterva_ends_seconds: float,  # (binning * m)
-    postinterval_start_seconds: float,  # binning * skip
+        intervals_duration_seconds: float,  # (binning / alpha)
+        preinterval_ends_seconds: float,  # (binning * m)
+        postinterval_start_seconds: float,  # binning * skip
 ) -> list[TTI]:
     """Transforms the triggers changepoints to a list of TTI obeying the rule
     that a TTI must always be comprised in a GTI."""
     format_result = _format(
         intervals_duration_seconds,
-        preinterva_ends_seconds,
+        preinterval_ends_seconds,
         intervals_duration_seconds,
         postinterval_start_seconds,
     )

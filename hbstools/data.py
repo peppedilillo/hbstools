@@ -12,7 +12,8 @@ from hbstools.types import GTI, MET, Dataset
 
 
 def catalog(data_folders: Iterable[Path | str]) -> Dataset:
-    """Takes an unordered collection of paths, orders them and returns a Dataset."""
+    """Takes a possibly unsorted collection of paths, sort it and returns a Dataset,
+    i.e. list of (GTI, filepath) tuples, sorted by the start time of the GTIs."""
     unsorted_gtis = {dp: read_gti_files(dp) for dp in data_folders}
     sorted_folders = sorted(data_folders, key=lambda d: unsorted_gtis[d][0].start)
     sorted_gtis = [unsorted_gtis[dp] for dp in sorted_folders]
@@ -47,7 +48,8 @@ def stream(
 ) -> Iterable[tuple[pd.DataFrame, GTI]]:
     """
     This function takes a dataset and returns an iterator, which will get you
-    a (gti, DataFrame) tuple a time. The intended usage goes like:
+    a (gti, DataFrame) tuple a time.
+     The intended usage goes like:
     ```
     for gti, df in stream(dataset):
         run trigger on df

@@ -11,7 +11,7 @@ m = 5
 
 format_params = {
     "intervals_duration_seconds": binning / alpha,
-    "preinterva_ends_seconds": binning * m,
+    "preinterval_ends_seconds": binning * m,
     "postinterval_start_seconds": binning * skip,
 }
 
@@ -24,11 +24,11 @@ inputs = [
 ]
 
 outputs = [
-    [(-10.0, 0.0, 20.0, 35.0, +15.0, +25.0)],
+    [(10.0, 20.0, 20.0, 35.0, 35.0, 45.0)],
     #        ^^^ m = 5 seconds, changepoint = 20 s, trigger = 25 s
-    [(-13.0, -3.0, 40.0, 52.0, +12.0, +22.0)],
-    [(-6.0, -4.0, 6.0, 17.0, +11.0, +21.0)],
-    [(-14.0, -4.0, 47.0, 48.0, +1.0, +3.0)],
+    [(27.0, 37.0, 40.0, 52.0, 52.0, 62.0)],
+    [(0.0, 2.0, 6.0, 17.0, 17.0, 27.0)], # left squashing
+    [(33.0, 43.0, 47.0, 48.0, 48.0, 50.0)], # right squashing
 ]
 
 

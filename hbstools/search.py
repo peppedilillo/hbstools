@@ -100,6 +100,6 @@ def search(
     return format_results(
         results=results,
         intervals_duration_seconds=configuration["binning"] / algorithm_params["alpha"],
-        preinterva_ends_seconds=configuration["binning"] * algorithm_params["m"],
+        preinterval_ends_seconds=configuration["binning"] * algorithm_params["m"],
         postinterval_start_seconds=configuration["binning"] * configuration["skip"],
     )
