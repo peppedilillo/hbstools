@@ -1,4 +1,3 @@
-from math import log10
 from pathlib import Path
 from typing import Callable, Sequence
 
@@ -273,6 +272,10 @@ def crawler(
     return check_dir(Path(directory), targets, recursion_limit, 0, set())
 
 
+def fmt_filename(filename: str | Path) -> str:
+    return f"'[b]{filename}[/]'"
+
+
 @click.group()
 @click.option(
     "--quiet",
@@ -291,14 +294,6 @@ def cli(ctx: click.Context, quiet: bool):
         "quiet": quiet,
     }
     return
-
-
-def search_record_directory(
-    ctx: click.Context, param: click.Option, path: Path
-) -> Path:
-    """Records user input argument for directory to be searched"""
-    ctx.obj["search_input"] = path
-    return path
 
 
 def search_validate_config(
@@ -326,48 +321,37 @@ def search_validate_config(
     return config
 
 
-def validate_output(output: Path, filename: str) -> Path:
-    """Checks output choice and finds alternatives if files already exist."""
-
-    def find_valid_name(file, num):
-        if not file.exists():
-            return file
-        else:
-            next_name = f"{file.stem[:-(int(log10(num)) + 2)] if num > 1 else file.stem}-{num}{file.suffix}"
-            return find_valid_name(Path(file).parent.joinpath(next_name), num + 1)
-
-    if output.is_dir():
-        default_file = Path(output).joinpath(filename)
-        if default_file.is_file():
-            return find_valid_name(default_file, 1)
-        else:
-            return default_file
-    elif output.is_file():
-        raise FileExistsError()
-    else:
-        return output
+def unused_path(file: Path, num: int = 1, isdir: bool = False) -> Path:
+    """Return an unused path with same stem prefix as `file` and incremental suffix.
+    if `num` is set to 1, tested alternatives are: `path.fits`, `path-1.fits`,
+    `path-2.fits` and so on.
+    if `num` is set to 0, tested alternatives are `path.fits`, `path-0.fits`,
+    `path-1.fits`..`"""
+    if (not file.is_file() and not isdir) or (not file.is_dir() and isdir):
+        return file
+    parts = file.stem.split("-")
+    *tail, head = parts
+    stem = "-".join(tail) if head.isdigit() else "-".join(parts)
+    return unused_path(Path(file).parent.joinpath(f"{stem}-{num}{file.suffix}"), num + 1, isdir)
 
 
-def search_validate_output(ctx: click.Context, param: click.Option, path: Path) -> Path:
-    """Validate user output path choice and records it"""
-    try:
-        output = validate_output(
-            path if path is not None else ctx.obj["search_input"],
-            "mercury-results.fits",
-        )
-    except FileExistsError:
-        raise click.BadParameter(
-            f"Can not create file, a file '{path}' already exists."
-        )
-    ctx.obj["seach_output"] = path
-    return output
+DEFAULT_CATALOG_NAME = "mercury-results.fits"
+DEFAULT_LIBRARY_NAME = "mercury-results/"
 
 
 @cli.command()
 @click.argument(
-    "input_directory",
+    "input_dir",
     type=click.Path(exists=True, file_okay=False, path_type=Path),
-    callback=search_record_directory,
+)
+@click.option(
+    "-o",
+    "--output",
+    "output",
+    type=click.Path(dir_okay=True, path_type=Path),
+    default=Path("."),
+    help="Path to a file or a directory where results are saved. "
+    "If not provided, the output are saved in the input directory. ",
 )
 @click.option(
     "-c",
@@ -379,13 +363,13 @@ def search_validate_output(ctx: click.Context, param: click.Option, path: Path) 
     "If not provided, values from a default configuration are used.",
 )
 @click.option(
-    "-o",
-    "--output",
-    "output_path",
-    type=click.Path(dir_okay=True, path_type=Path),
-    callback=search_validate_output,
-    help="Path to a file or a directory where results are saved. "
-    "If not provided, the output are saved in the input directory. ",
+    "-m",
+    "--mode",
+    "mode",
+    type=click.Choice(["catalog", "library"]),
+    default="catalog",
+    help="Formats the output. In `catalog` mode a single fits file is created."
+    "In `library` mode, a folder or fits file is generated"
 )
 @click.option(
     "--reclim",
@@ -398,19 +382,16 @@ def search_validate_output(ctx: click.Context, param: click.Option, path: Path) 
 @click.pass_context
 def search(
     ctx: click.Context,
-    input_directory: Path,
+    input_dir: Path,
+    output: Path,
     configuration: dict,
-    output_path: Path,
+    mode: str,
     recursion_limit: int,
 ):
     """Searches transients from data in a folder.
     The algorithm used for this search is called Poisson-FOCuS (Ward, 2022; Dilillo, 2024).
     The search is configurable using a YAML configuration, see mercury's 'drop' command.
     """
-
-    def fmt_filename(filename: str | Path) -> str:
-        return f"'[b]{filename}[/]'"
-
     # fmt: off
     console = init_console(with_logo=True)
     console.print(f"Welcome, this is [bold]mercury.search[/].\n")
@@ -419,43 +400,40 @@ def search(
     console.log(f"Algorithm {ctx.obj['search_algoname']} matches the configuration.")
 
     search_targets = ["gti.fits", "out_s_cl.evt", "out_x_cl.evt"]
-    data_paths = crawler(input_directory, search_targets, recursion_limit)
+    data_paths = crawler(input_dir, search_targets, recursion_limit)
     if not data_paths:
         console.print("\nFound no data. Exiting.\n")
         return
     console.log(f"Found {len(data_paths)} data folder{'' if len(data_paths) == 1 else 's'}.")
 
     dataset = hbs.data.catalog(data_paths)
-    ttis = hbs.search(dataset, configuration, console=console)
-    if ttis.empty:
+    events = hbs.search(dataset, configuration, console=console)
+    if not events:
         console.print("\nNo results to save. Exiting.\n")
         return
 
-    console.log(f"Writing to {fmt_filename(output_path)}.")
-    hbs.io.write_ttis_to_fits(ttis, output_path)
+    if mode == "catalog":
+        filepath = unused_path(output if not output.is_dir() else output / DEFAULT_CATALOG_NAME)
+        console.log(f"Writing to {fmt_filename(filepath)}.")
+        hbs.io.write_catalog(events, filepath)
+    elif mode == "library":
+        dirpath = unused_path(output / DEFAULT_LIBRARY_NAME if output == Path(".") else output, isdir=True)
+        dirpath.mkdir()
+        console.log(f"Writing to {fmt_filename(dirpath)}.")
+        hbs.io.write_library(events, dataset, dirpath)
 
     console.print("\nDone.\n")
     # fmt: on
     return
 
 
-def drop_validate_output(ctx: click.Context, param: click.Option, path: Path) -> Path:
-    """Validate user output path choice and records it."""
-    try:
-        output = validate_output(path, "mercury-config.yml")
-    except FileExistsError:
-        raise click.BadParameter(
-            f"Can not create file, a file '{path}' already exists."
-        )
-    ctx.obj["drop_output"] = path
-    return output
+DEFAULT_CONFIG_NAME = "mercury-config.yml"
 
 
 @cli.command()
 @click.argument(
     "output",
     type=click.Path(dir_okay=True, path_type=Path),
-    callback=drop_validate_output,
 )
 @click.pass_context
 def drop(ctx: click.Context, output: Path):
@@ -466,6 +444,47 @@ def drop(ctx: click.Context, output: Path):
         if ctx.obj["quiet"]
         else default_config()
     )
-    with open(output, "w") as file:
+    filepath = unused_path(output if not output.is_dir() else output / DEFAULT_CONFIG_NAME)
+    with open(filepath, "w") as file:
         file.write(config_text)
-    console.print(f"[bold]Created configuration file '{output}' :sparkles:.")
+    console.print(f"Created configuration file '{fmt_filename(filepath)}' :sparkles:.")
+
+
+@cli.command()
+@click.argument(
+    "input_directory",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+)
+@click.pass_context
+def merge(ctx: click.Context, input_directory: Path):
+    """Merge a library of results into a dataset."""
+    from shutil import copy
+
+    console = init_console(with_logo=False)
+    index_path = input_directory / hbs.io.INDEX_FILENAME
+    if not index_path.is_file():
+        raise click.UsageError(
+            f"The input folders does not contain a '{hbs.io.INDEX_FILENAME}' file."
+        )
+    with open(index_path, "r") as f:
+        index = read_yaml(f)
+
+    files, roots = zip(*index.items())
+
+    assert len(files) == len(roots)
+    if not all([f.exists() for f in map(Path, [*files, *roots])]):
+        raise click.FileError(
+            f"Some of the indexed files or their root can not be found."
+        )
+    if not all([not (Path(root) / f).exists() for f, root in zip(files, roots)]):
+        print([(Path(root) / f).exists() for f, root in zip(files, roots)])
+        print([Path(root) / f for f, root in zip(files, roots)])
+        raise click.FileError(
+            f"The files were already merged, or the roots folder contain event files."
+        )
+
+    for file, root in zip(files, roots):
+        copy(file, root)
+        console.print(f"Copied {fmt_filename(Path(file).stem)} to {fmt_filename(Path(root))}.")
+
+    console.print(f"\nMerge complete :sparkles:.")

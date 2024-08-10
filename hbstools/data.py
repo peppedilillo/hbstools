@@ -124,3 +124,5 @@ def histogram_quadrants(
         for _, quadrant_data in data.groupby("QUADID", observed=False)
     ]
     return np.vstack(quadrant_counts), bins
+
+

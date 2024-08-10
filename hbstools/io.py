@@ -1,11 +1,13 @@
+from _bisect import bisect_right
 from pathlib import Path
-from bisect import bisect_right
 
 import pandas as pd
 from astropy.io import fits  # type: ignore[import-untyped]
 from pandas.api.types import CategoricalDtype
+import yaml
 
 from hbstools.types import GTI, Event, Dataset
+
 
 
 def path_xdata(data_folder: str | Path) -> Path:
@@ -73,28 +75,44 @@ def write_bkg_fits(event: Event, filepath: Path, header: fits.Header | None = No
     fits.writeto(filename=filepath, data=content, header=header, overwrite=True)
 
 
+def map_event_to_files(events: list[Event], dataset: Dataset) -> dict[Event, Path]:
+    """Returns a dictionary of events and filepath. The filepath associated to
+    an event is the one containing the event's start MET."""
+    gtis, datafiles = list(zip(*dataset))
+    gtis_starts = [gti.start for gti in gtis]
+    ids = [bisect_right(gtis_starts, e.start) - 1 for e in events]
+    assert -1 not in ids
+    roots = [datafiles[i] for i in ids]
+    return {event: root for event, root in zip(events, roots)}
+
+
+INDEX_HEADER = """
+# This file was automatically created by mercury to index files created during a
+# transient search. It's intended use is to provide a reference for merging
+# results into the dataset. 
+"""
+
+INDEX_FILENAME = ".mercury-index.yaml"
+
+
+def write_index(index: dict, path: Path):
+    with open(path / INDEX_FILENAME, 'w') as f:
+        f.write(INDEX_HEADER)
+        yaml.dump(index, f)
+
+
 def write_library(events: list[Event], dataset: Dataset, path: Path):
-    if not events:
-        return
-
-    if not path.exists():
-        path.mkdir(parents=True)
-
-    from collections import Counter
     from math import log10
 
-    gtis, datapaths = list(zip(*dataset))
-    gtis_start = [gti.start for gti in gtis]
+    event_map = map_event_to_files(events, dataset)
+    index = {}
+    width = int(log10(len(events))) + 1  # filename padding
+    for num, (event, root) in enumerate(event_map.items()):
+        _, header = fits.getdata(path_gtis(root), header=True)
+        stem = f"event_{num:0{width}}"
+        write_source_fits(event, src_path := path / f"{stem}_src.fits", header)
+        write_bkg_fits(event, bkg_path := path / f"{stem}_bkg.fits", header)
+        index[src_path.name] = str(root.absolute())
+        index[bkg_path.name] = str(root.absolute())
 
-    indeces = [bisect_right(gtis_start, event.start) for event in events]
-    assert -1 not in indeces
-    counter = Counter(indeces)
-    num, last_index = 0, -1
-    for index, event in zip(indeces, events):
-        # fmt: skip
-        num = 0 if index != last_index else num + 1; last_index = index
-        num_str = '' if num == 0 else '{num:0{width}}'.format(num=num, width=int(log10(counter[index])) + 1)
-
-        _, header = fits.getdata(path_gtis(datapaths[index]), header=True)
-        write_source_fits(event, path / f"{datapaths[index].stem}_src{num_str}.fits", header)
-        write_bkg_fits(event, path / f"{datapaths[index].stem}_bkg{num_str}.fits", header)
+    write_index(index, path)
