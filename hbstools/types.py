@@ -8,14 +8,24 @@ Change = tuple[float, int]
 Changepoint = tuple[float, int, int]
 # significance, changepoint_MET, triggertime_MET
 ChangepointMET = tuple[float, MET, MET]
-TTI = tuple[MET, MET, MET, MET, MET, MET]
 
 
 class GTI(NamedTuple):
-    """A record for holding time intervals"""
+    """A record for time intervals"""
 
     start: MET
     end: MET
 
 
 Dataset = list[tuple[GTI, Path]]
+
+
+class Event(NamedTuple):
+    """A record for transient events"""
+
+    bkg_pre_start: MET
+    bkg_pre_end: MET
+    start: MET
+    end: MET
+    bkg_post_start: MET
+    bkg_post_end: MET

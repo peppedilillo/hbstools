@@ -10,7 +10,7 @@ This is a schematic representing the `bkg_pre`, `event` and `bkg_post` intervals
                                    |                        |
                       changepoint  |                        |
                            |(*<-----post_t + tt - cp----->*)|
-                                    EVENT INTERVAL
+                                    EVENT_INTERVAL
 
 
 
@@ -45,21 +45,9 @@ of the algorithm's parameters:
        adjacent (overlap), the interval is not squashed.
 """
 
-from functools import wraps
 from typing import Callable
 
-import pandas as pd
-
-from hbstools.types import GTI, MET, TTI, ChangepointMET
-
-FCOLS = [
-    "bkg_pre_start",
-    "bkg_pre_end",
-    "event_start",
-    "event_end",
-    "bkg_post_start",
-    "bkg_post_end",
-]
+from hbstools.types import GTI, MET, Event, ChangepointMET
 
 
 def compute_bkg_pre(
@@ -102,11 +90,11 @@ def _format(
     post_delta: float,  # binning / alpha
     post_t: float,  # binning * skip
 ) -> Callable:
-    """Sets the duration and extremes for a TTI's pre- and post- trigger interval."""
+    """Sets the duration and extremes for an event's pre- and post- trigger interval."""
     def _format_result(
         result: ChangepointMET,
         gti: GTI,
-    ) -> TTI:
+    ) -> Event:
         """Transforms a single focus results (times expressed as mets) into an event formatted like:
         (bkg_pres_start, bkg_pre_ends, event_starts, event_ends, bkg_post_start, bkg_post_end)
         """
@@ -125,31 +113,18 @@ def _format(
         )
         event_interval = changepoint, bkg_post_start
         # noinspection PyTypeChecker
-        return *bkg_pre, *event_interval, bkg_post_start, bkg_post_end
+        return Event(*bkg_pre, *event_interval, bkg_post_start, bkg_post_end)
     return _format_result
 
 
-def as_dataframe(func):
-    """Transforms a TTI list to a pandas Dataframe"""
-    @wraps(func)
-    def wrapper(*args, **kwargs) -> pd.DataFrame:
-        return pd.DataFrame(
-            func(*args, **kwargs),
-            columns=FCOLS,
-        )
-
-    return wrapper
-
-
-@as_dataframe
 def format_results(
     results: dict[GTI, list[ChangepointMET]],
         intervals_duration_seconds: float,  # (binning / alpha)
         preinterval_ends_seconds: float,  # (binning * m)
         postinterval_start_seconds: float,  # binning * skip
-) -> list[TTI]:
-    """Transforms the triggers changepoints to a list of TTI obeying the rule
-    that a TTI must always be comprised in a GTI."""
+) -> list[Event]:
+    """Transforms the triggers changepoints to a list of events obeying the rule
+    that an event must always be comprised in a GTI."""
     format_result = _format(
         intervals_duration_seconds,
         preinterval_ends_seconds,
