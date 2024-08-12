@@ -1,9 +1,9 @@
 import unittest
 
-import hbstools.triggers.bft_cwrap as cbft
 from hbstools import search
 from hbstools.data import catalog
 from hbstools.trigger import trigger_match
+import hbstools.triggers.bft_cwrap as cbft
 from hbstools.types import GTI
 
 data_paths = ["./data_100s_stronganomaly60s/"]

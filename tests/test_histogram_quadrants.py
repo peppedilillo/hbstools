@@ -1,6 +1,8 @@
 import unittest
 
-from hbstools.data import catalog, histogram_quadrants, stream
+from hbstools.data import catalog
+from hbstools.data import histogram_quadrants
+from hbstools.data import stream
 
 inputs = ["data_100s_stronganomaly60s/"]
 

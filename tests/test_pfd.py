@@ -1,9 +1,9 @@
 import unittest
 
-import hbstools.triggers.poissonfocusdes as pfd
-from hbstools.search import search
 from hbstools.data import catalog
+from hbstools.search import search
 from hbstools.trigger import trigger_match
+import hbstools.triggers.poissonfocusdes as pfd
 from hbstools.types import GTI
 
 data_paths = ["data_100s_stronganomaly60s/"]

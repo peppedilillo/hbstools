@@ -1,6 +1,7 @@
 import unittest
 
-from hbstools.data import catalog, stream
+from hbstools.data import catalog
+from hbstools.data import stream
 from hbstools.types import GTI
 
 inputs = {

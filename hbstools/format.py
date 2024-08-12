@@ -47,7 +47,10 @@ of the algorithm's parameters:
 
 from typing import Callable
 
-from hbstools.types import GTI, MET, Event, ChangepointMET
+from hbstools.types import ChangepointMET
+from hbstools.types import Event
+from hbstools.types import GTI
+from hbstools.types import MET
 
 
 def compute_bkg_pre(
@@ -60,7 +63,7 @@ def compute_bkg_pre(
     with duration binning / alpha."""
     if trigtime - t - delta < gti.start:
         start = gti.start
-        end = - t + trigtime
+        end = -t + trigtime
     else:
         end = trigtime - t
         start = end - delta
@@ -91,6 +94,7 @@ def _format(
     post_t: float,  # binning * skip
 ) -> Callable:
     """Sets the duration and extremes for an event's pre- and post- trigger interval."""
+
     def _format_result(
         result: ChangepointMET,
         gti: GTI,
@@ -114,14 +118,15 @@ def _format(
         event_interval = changepoint, bkg_post_start
         # noinspection PyTypeChecker
         return Event(*bkg_pre, *event_interval, bkg_post_start, bkg_post_end)
+
     return _format_result
 
 
 def format_results(
     results: dict[GTI, list[ChangepointMET]],
-        intervals_duration_seconds: float,  # (binning / alpha)
-        preinterval_ends_seconds: float,  # (binning * m)
-        postinterval_start_seconds: float,  # binning * skip
+    intervals_duration_seconds: float,  # (binning / alpha)
+    preinterval_ends_seconds: float,  # (binning * m)
+    postinterval_start_seconds: float,  # binning * skip
 ) -> list[Event]:
     """Transforms the triggers changepoints to a list of events obeying the rule
     that an event must always be comprised in a GTI."""

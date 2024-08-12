@@ -5,10 +5,14 @@ import pandas as pd
 from rich.console import Console
 from rich.progress import track
 
-import hbstools.trigger as trig
-from hbstools.data import catalog, filter_energy, stream
+from hbstools.data import catalog
+from hbstools.data import filter_energy
+from hbstools.data import stream
 from hbstools.format import format_results
-from hbstools.types import GTI, ChangepointMET, Dataset
+import hbstools.trigger as trig
+from hbstools.types import ChangepointMET
+from hbstools.types import Dataset
+from hbstools.types import GTI
 
 
 def search_set(

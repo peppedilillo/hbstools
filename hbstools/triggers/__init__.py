@@ -19,8 +19,8 @@ class TriggerAlgorithm:
 def _library_path(libname: str) -> str:
     """Gets the path to the C shared library, with appropriate extension.
     Assumes the library and this file to be installed in the same directory"""
-    import sys
     from pathlib import Path
+    import sys
 
     if sys.platform.startswith("win32"):
         suffix = ".dll"

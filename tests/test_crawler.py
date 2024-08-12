@@ -1,5 +1,5 @@
-import unittest
 from pathlib import Path
+import unittest
 
 from mercury.mercury import crawler
 

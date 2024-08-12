@@ -1,26 +1,29 @@
+import hashlib
 from pathlib import Path
 from typing import Callable, Sequence
-import hashlib
 import warnings
 
+from astropy.io import fits
 import click
 import pandas as pd
-import yaml
-from astropy.io import fits
 from rich.console import Console
 from schema import And  # type: ignore[import-untyped]
 from schema import Optional  # type: ignore[import-untyped]
 from schema import Schema  # type: ignore[import-untyped]
 from schema import SchemaError  # type: ignore[import-untyped]
 from schema import Use  # type: ignore[import-untyped]
-from yaml import YAMLError
+import yaml
 from yaml import dump as write_yaml
 from yaml import safe_load as read_yaml
+from yaml import YAMLError
 
 import hbstools as hbs
-from hbstools.io import path_gtis, write_source_fits, write_bkg_fits
 from hbstools.data import map_event_to_files
-from hbstools.types import Event, Dataset
+from hbstools.io import path_gtis
+from hbstools.io import write_bkg_fits
+from hbstools.io import write_source_fits
+from hbstools.types import Dataset
+from hbstools.types import Event
 
 LOGO = """
                         
@@ -291,7 +294,9 @@ def unused_path(file: Path, num: int = 1, isdir: bool = False) -> Path:
     parts = file.stem.split("-")
     *tail, head = parts
     stem = "-".join(tail) if head.isdigit() else "-".join(parts)
-    return unused_path(Path(file).parent.joinpath(f"{stem}-{num}{file.suffix}"), num + 1, isdir)
+    return unused_path(
+        Path(file).parent.joinpath(f"{stem}-{num}{file.suffix}"), num + 1, isdir
+    )
 
 
 def fmt_filename(filename: str | Path) -> str:
@@ -357,7 +362,7 @@ INDEX_FILENAME = ".mercury-index.yaml"
 
 
 def write_index(index: dict, path: Path):
-    with open(path / INDEX_FILENAME, 'w') as f:
+    with open(path / INDEX_FILENAME, "w") as f:
         yaml.dump(index, f)
 
 
@@ -415,7 +420,7 @@ def write_library(events: list[Event], dataset: Dataset, path: Path):
     type=click.Choice(["catalog", "library"]),
     default="catalog",
     help="Formats the output. In `catalog` mode a single fits file is created."
-    "In `library` mode, a folder or fits file is generated"
+    "In `library` mode, a folder or fits file is generated",
 )
 @click.option(
     "--reclim",
@@ -490,7 +495,9 @@ def drop(ctx: click.Context, output: Path):
         if ctx.obj["quiet"]
         else default_config()
     )
-    filepath = unused_path(output if not output.is_dir() else output / DEFAULT_CONFIG_NAME)
+    filepath = unused_path(
+        output if not output.is_dir() else output / DEFAULT_CONFIG_NAME
+    )
     with open(filepath, "w") as file:
         file.write(config_text)
     console.print(f"Created configuration file '{fmt_filename(filepath)}' :sparkles:.")
@@ -519,9 +526,7 @@ def merge(ctx: click.Context, input_directory: Path):
     # make sure the result directory was not already merged.
     merge_path = input_directory / DEFAULT_MERGE_NAME
     if merge_path.is_file():
-        raise click.UsageError(
-            "Input directory has already been merged."
-        )
+        raise click.UsageError("Input directory has already been merged.")
 
     # make sure an index file exists.
     index_path = input_directory / INDEX_FILENAME
@@ -547,15 +552,14 @@ def merge(ctx: click.Context, input_directory: Path):
     console = init_console(with_logo=False)
     merge_index = {}
     for file, root, t in zip(files, roots, types):
-        dst = unused_path(root / (DEFAULT_EVENT_NAME.stem + f"-{t}" + DEFAULT_EVENT_NAME.suffix))
+        dst = unused_path(
+            root / (DEFAULT_EVENT_NAME.stem + f"-{t}" + DEFAULT_EVENT_NAME.suffix)
+        )
         copy(file, dst)
-        merge_index[str(file)] = {
-            "dst": str(dst),
-            "hash": sha1_hash(file)
-        }
+        merge_index[str(file)] = {"dst": str(dst), "hash": sha1_hash(file)}
 
     # save infos to a yaml file that can be used to revert the merge
-    with open(input_directory / DEFAULT_MERGE_NAME, 'w') as f:
+    with open(input_directory / DEFAULT_MERGE_NAME, "w") as f:
         write_yaml(merge_index, f)
     console.print(f"Merge complete :sparkles:.")
 
@@ -572,9 +576,7 @@ def clean(ctx: click.Context, input_directory: Path):
     # make sure the result directory was not already merged.
     merge_index_path = input_directory / DEFAULT_MERGE_NAME
     if not merge_index_path.is_file():
-        raise click.UsageError(
-            "The input directory has already been merged."
-        )
+        raise click.UsageError("The input directory has already been merged.")
 
     with open(merge_index_path, "r") as f:
         merge_index = read_yaml(f)

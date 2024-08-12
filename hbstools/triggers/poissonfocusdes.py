@@ -9,7 +9,8 @@ from typing import Deque, Sequence
 
 from hbstools.triggers import TriggerAlgorithm
 from hbstools.triggers.poissonfocus import PoissonFocus
-from hbstools.types import Change, Changepoint
+from hbstools.types import Change
+from hbstools.types import Changepoint
 
 
 class PoissonFocusDes(TriggerAlgorithm):

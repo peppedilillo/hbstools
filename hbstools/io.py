@@ -1,10 +1,11 @@
 from pathlib import Path
 
-import pandas as pd
 from astropy.io import fits  # type: ignore[import-untyped]
+import pandas as pd
 from pandas.api.types import CategoricalDtype
 
-from hbstools.types import GTI, Event
+from hbstools.types import Event
+from hbstools.types import GTI
 
 
 def path_xdata(data_folder: str | Path) -> Path:

@@ -1,15 +1,19 @@
-from _bisect import bisect_right
 from functools import reduce
 from itertools import pairwise
 from math import isclose
 from pathlib import Path
 from typing import Iterable
 
+from _bisect import bisect_right
 import numpy as np
 import pandas as pd
 
-from hbstools.io import read_event_files, read_gti_files
-from hbstools.types import GTI, MET, Dataset, Event
+from hbstools.io import read_event_files
+from hbstools.io import read_gti_files
+from hbstools.types import Dataset
+from hbstools.types import Event
+from hbstools.types import GTI
+from hbstools.types import MET
 
 
 def catalog(data_folders: Iterable[Path | str]) -> Dataset:

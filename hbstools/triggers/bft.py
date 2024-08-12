@@ -10,7 +10,8 @@ import numpy.typing as npt
 from hbstools.triggers import TriggerAlgorithm
 from hbstools.triggers.poissonfocus import PoissonFocus
 from hbstools.triggers.poissonfocusdes import PoissonFocusDes
-from hbstools.types import Change, Changepoint
+from hbstools.types import Change
+from hbstools.types import Changepoint
 
 
 def fold_changepoints(func: Callable):
