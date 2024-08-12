@@ -86,18 +86,11 @@ def map_event_to_files(events: list[Event], dataset: Dataset) -> dict[Event, Pat
     return {event: root for event, root in zip(events, roots)}
 
 
-INDEX_HEADER = """
-# This file was automatically created by mercury to index files created during a
-# transient search. It's intended use is to provide a reference for merging
-# results into the dataset. 
-"""
-
 INDEX_FILENAME = ".mercury-index.yaml"
 
 
 def write_index(index: dict, path: Path):
     with open(path / INDEX_FILENAME, 'w') as f:
-        f.write(INDEX_HEADER)
         yaml.dump(index, f)
 
 
@@ -109,10 +102,17 @@ def write_library(events: list[Event], dataset: Dataset, path: Path):
     width = int(log10(len(events))) + 1  # filename padding
     for num, (event, root) in enumerate(event_map.items()):
         _, header = fits.getdata(path_gtis(root), header=True)
-        stem = f"event_{num:0{width}}"
-        write_source_fits(event, src_path := path / f"{stem}_src.fits", header)
-        write_bkg_fits(event, bkg_path := path / f"{stem}_bkg.fits", header)
-        index[src_path.name] = str(root.absolute())
-        index[bkg_path.name] = str(root.absolute())
+        suffix = f"-{num:0{width}}"
+
+        write_source_fits(event, src_path := path / f"event-src{suffix}.fits", header)
+        write_bkg_fits(event, bkg_path := path / f"event-bkg{suffix}.fits", header)
+        index[src_path.name] = {
+            "root": str(root.absolute()),
+            "type": "src",
+        }
+        index[bkg_path.name] = {
+            "root": str(root.absolute()),
+            "type": "bkg",
+        }
 
     write_index(index, path)

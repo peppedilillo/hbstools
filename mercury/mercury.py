@@ -1,5 +1,7 @@
 from pathlib import Path
 from typing import Callable, Sequence
+import hashlib
+import warnings
 
 import click
 from rich.console import Console
@@ -450,6 +452,15 @@ def drop(ctx: click.Context, output: Path):
     console.print(f"Created configuration file '{fmt_filename(filepath)}' :sparkles:.")
 
 
+def sha1_hash(path: Path):
+    with open(path, "rb") as f:
+        hsh = hashlib.file_digest(f, "sha1").hexdigest()
+    return hsh
+
+
+DEFAULT_EVENT_NAME = Path("event.fits")
+DEFAULT_MERGE_NAME = ".mercury-merge.yaml"
+
 @cli.command()
 @click.argument(
     "input_directory",
@@ -460,31 +471,83 @@ def merge(ctx: click.Context, input_directory: Path):
     """Merge a library of results into a dataset."""
     from shutil import copy
 
-    console = init_console(with_logo=False)
+    # make sure the result directory was not already merged.
+    merge_path = input_directory / DEFAULT_MERGE_NAME
+    if merge_path.is_file():
+        raise click.UsageError(
+            "Input directory has already been merged."
+        )
+
+    # make sure an index file exists.
     index_path = input_directory / hbs.io.INDEX_FILENAME
     if not index_path.is_file():
         raise click.UsageError(
-            f"The input folders does not contain a '{hbs.io.INDEX_FILENAME}' file."
+            f"Input directory does not contain a '{hbs.io.INDEX_FILENAME}' file."
         )
     with open(index_path, "r") as f:
         index = read_yaml(f)
 
-    files, roots = zip(*index.items())
+    files = [input_directory / file for file in index.keys()]
+    roots = [Path(index[file]["root"]) for file in index.keys()]
 
-    assert len(files) == len(roots)
-    if not all([f.exists() for f in map(Path, [*files, *roots])]):
+    # checks that all result files and target directories exists
+    if not all([f.exists() for f in [*files, *roots]]):
         raise click.FileError(
             f"Some of the indexed files or their root can not be found."
         )
-    if not all([not (Path(root) / f).exists() for f, root in zip(files, roots)]):
-        print([(Path(root) / f).exists() for f, root in zip(files, roots)])
-        print([Path(root) / f for f, root in zip(files, roots)])
-        raise click.FileError(
-            f"The files were already merged, or the roots folder contain event files."
+
+    types = [index[file]["type"] for file in index.keys()]
+
+    # move to destination folder and store info on moved files in a dict
+    console = init_console(with_logo=False)
+    merge_index = {}
+    for file, root, t in zip(files, roots, types):
+        dst = unused_path(root / (DEFAULT_EVENT_NAME.stem + f"-{t}" + DEFAULT_EVENT_NAME.suffix))
+        copy(file, dst)
+        merge_index[str(file)] = {
+            "dst": str(dst),
+            "hash": sha1_hash(file)
+        }
+
+    # save infos to a yaml file that can be used to revert the merge
+    with open(input_directory / DEFAULT_MERGE_NAME, 'w') as f:
+        write_yaml(merge_index, f)
+    console.print(f"Merge complete :sparkles:.")
+
+
+@cli.command()
+@click.argument(
+    "input_directory",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+)
+@click.pass_context
+def clean(ctx: click.Context, input_directory: Path):
+    from os import remove
+
+    # make sure the result directory was not already merged.
+    merge_index_path = input_directory / DEFAULT_MERGE_NAME
+    if not merge_index_path.is_file():
+        raise click.UsageError(
+            "The input directory has already been merged."
         )
 
-    for file, root in zip(files, roots):
-        copy(file, root)
-        console.print(f"Copied {fmt_filename(Path(file).stem)} to {fmt_filename(Path(root))}.")
+    with open(merge_index_path, "r") as f:
+        merge_index = read_yaml(f)
 
-    console.print(f"\nMerge complete :sparkles:.")
+    files = [Path(merge_index[file]["dst"]) for file in merge_index.keys()]
+    hashes = [merge_index[file]["hash"] for file in merge_index.keys()]
+
+    console = init_console(with_logo=False)
+    for file, sha1hash in zip(files, hashes):
+        if not file.is_file():
+            warnings.warn(f"Skipping {file}. This file no longer exist.")
+        elif sha1hash != sha1_hash(file):
+            warnings.warn(f"Skipping {file}. Uncompatible hashes.")
+        else:
+            remove(file)
+
+    if not any([file.is_file() for file in files]):
+        console.print("All merged files removed. Cleaning complete :sparkles:!")
+        remove(merge_index_path)
+    else:
+        console.print("Cleaning complete :sparkles:.")
