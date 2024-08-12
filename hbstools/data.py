@@ -1,3 +1,4 @@
+from _bisect import bisect_right
 from functools import reduce
 from itertools import pairwise
 from math import isclose
@@ -8,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from hbstools.io import read_event_files, read_gti_files
-from hbstools.types import GTI, MET, Dataset
+from hbstools.types import GTI, MET, Dataset, Event
 
 
 def catalog(data_folders: Iterable[Path | str]) -> Dataset:
@@ -126,3 +127,12 @@ def histogram_quadrants(
     return np.vstack(quadrant_counts), bins
 
 
+def map_event_to_files(events: list[Event], dataset: Dataset) -> dict[Event, Path]:
+    """Returns a dictionary of events and filepath. The filepath associated to
+    an event is the one containing the event's start MET."""
+    gtis, datafiles = list(zip(*dataset))
+    gtis_starts = [gti.start for gti in gtis]
+    ids = [bisect_right(gtis_starts, e.start) - 1 for e in events]
+    assert -1 not in ids
+    roots = [datafiles[i] for i in ids]
+    return {event: root for event, root in zip(events, roots)}

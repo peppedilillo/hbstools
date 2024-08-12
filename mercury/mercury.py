@@ -4,6 +4,9 @@ import hashlib
 import warnings
 
 import click
+import pandas as pd
+import yaml
+from astropy.io import fits
 from rich.console import Console
 from schema import And  # type: ignore[import-untyped]
 from schema import Optional  # type: ignore[import-untyped]
@@ -15,6 +18,9 @@ from yaml import dump as write_yaml
 from yaml import safe_load as read_yaml
 
 import hbstools as hbs
+from hbstools.io import path_gtis, write_source_fits, write_bkg_fits
+from hbstools.data import map_event_to_files
+from hbstools.types import Event, Dataset
 
 LOGO = """
                         
@@ -148,26 +154,6 @@ algorithm_params:
  """
 
 
-def _default_config() -> tuple[Callable, Callable]:
-    def show() -> str:
-        """Returns default config"""
-        if called_yet[0]:
-            return DEFAULT_CONFIG
-        else:
-            called_yet[0] = True
-            return DEFAULT_CONFIG
-
-    def tell() -> bool:
-        """A sentinel. It tells if default config was ever called"""
-        return called_yet[0]
-
-    called_yet = [False]
-    return show, tell
-
-
-default_config, used_default_config = _default_config()
-
-
 config_schema = Schema(
     {
         "binning": And(
@@ -226,6 +212,26 @@ config_schema = Schema(
 )
 
 
+def _default_config() -> tuple[Callable, Callable]:
+    def show() -> str:
+        """Returns default config"""
+        if called_yet[0]:
+            return DEFAULT_CONFIG
+        else:
+            called_yet[0] = True
+            return DEFAULT_CONFIG
+
+    def tell() -> bool:
+        """A sentinel. It tells if default config was ever called"""
+        return called_yet[0]
+
+    called_yet = [False]
+    return show, tell
+
+
+default_config, used_default_config = _default_config()
+
+
 def parse_user_else_default_config(config_path: Path | None) -> dict:
     """Opens the configuration file, if provided, or get values from default."""
     if config_path is None:
@@ -272,6 +278,20 @@ def crawler(
         return acc
 
     return check_dir(Path(directory), targets, recursion_limit, 0, set())
+
+
+def unused_path(file: Path, num: int = 1, isdir: bool = False) -> Path:
+    """Return an unused path with same stem prefix as `file` and incremental suffix.
+    if `num` is set to 1, tested alternatives are: `path.fits`, `path-1.fits`,
+    `path-2.fits` and so on.
+    if `num` is set to 0, tested alternatives are `path.fits`, `path-0.fits`,
+    `path-1.fits`..`"""
+    if (not file.is_file() and not isdir) or (not file.is_dir() and isdir):
+        return file
+    parts = file.stem.split("-")
+    *tail, head = parts
+    stem = "-".join(tail) if head.isdigit() else "-".join(parts)
+    return unused_path(Path(file).parent.joinpath(f"{stem}-{num}{file.suffix}"), num + 1, isdir)
 
 
 def fmt_filename(filename: str | Path) -> str:
@@ -323,22 +343,46 @@ def search_validate_config(
     return config
 
 
-def unused_path(file: Path, num: int = 1, isdir: bool = False) -> Path:
-    """Return an unused path with same stem prefix as `file` and incremental suffix.
-    if `num` is set to 1, tested alternatives are: `path.fits`, `path-1.fits`,
-    `path-2.fits` and so on.
-    if `num` is set to 0, tested alternatives are `path.fits`, `path-0.fits`,
-    `path-1.fits`..`"""
-    if (not file.is_file() and not isdir) or (not file.is_dir() and isdir):
-        return file
-    parts = file.stem.split("-")
-    *tail, head = parts
-    stem = "-".join(tail) if head.isdigit() else "-".join(parts)
-    return unused_path(Path(file).parent.joinpath(f"{stem}-{num}{file.suffix}"), num + 1, isdir)
-
-
 DEFAULT_CATALOG_NAME = "mercury-results.fits"
+
+
+def write_catalog(events: list[Event], filepath: Path | str):
+    """Save an event list to a single fits file"""
+    content = pd.DataFrame(events).to_records(index=False)
+    fits.writeto(filename=filepath, data=content, overwrite=True)
+
+
 DEFAULT_LIBRARY_NAME = "mercury-results/"
+INDEX_FILENAME = ".mercury-index.yaml"
+
+
+def write_index(index: dict, path: Path):
+    with open(path / INDEX_FILENAME, 'w') as f:
+        yaml.dump(index, f)
+
+
+def write_library(events: list[Event], dataset: Dataset, path: Path):
+    from math import log10
+
+    event_map = map_event_to_files(events, dataset)
+    index = {}
+    width = int(log10(len(events))) + 1  # filename padding
+    for num, (event, root) in enumerate(event_map.items()):
+        _, header = fits.getdata(path_gtis(root), header=True)
+        suffix = f"-{num:0{width}}"
+
+        write_source_fits(event, src_path := path / f"event-src{suffix}.fits", header)
+        write_bkg_fits(event, bkg_path := path / f"event-bkg{suffix}.fits", header)
+        index[src_path.name] = {
+            "root": str(root.absolute()),
+            "type": "src",
+        }
+        index[bkg_path.name] = {
+            "root": str(root.absolute()),
+            "type": "bkg",
+        }
+
+    write_index(index, path)
 
 
 @cli.command()
@@ -417,12 +461,12 @@ def search(
     if mode == "catalog":
         filepath = unused_path(output if not output.is_dir() else output / DEFAULT_CATALOG_NAME)
         console.log(f"Writing to {fmt_filename(filepath)}.")
-        hbs.io.write_catalog(events, filepath)
+        write_catalog(events, filepath)
     elif mode == "library":
         dirpath = unused_path(output / DEFAULT_LIBRARY_NAME if output == Path(".") else output, isdir=True)
         dirpath.mkdir()
         console.log(f"Writing to {fmt_filename(dirpath)}.")
-        hbs.io.write_library(events, dataset, dirpath)
+        write_library(events, dataset, dirpath)
 
     console.print("\nDone.\n")
     # fmt: on
@@ -461,6 +505,7 @@ def sha1_hash(path: Path):
 DEFAULT_EVENT_NAME = Path("event.fits")
 DEFAULT_MERGE_NAME = ".mercury-merge.yaml"
 
+
 @cli.command()
 @click.argument(
     "input_directory",
@@ -479,10 +524,10 @@ def merge(ctx: click.Context, input_directory: Path):
         )
 
     # make sure an index file exists.
-    index_path = input_directory / hbs.io.INDEX_FILENAME
+    index_path = input_directory / INDEX_FILENAME
     if not index_path.is_file():
         raise click.UsageError(
-            f"Input directory does not contain a '{hbs.io.INDEX_FILENAME}' file."
+            f"Input directory does not contain a '{INDEX_FILENAME}' file."
         )
     with open(index_path, "r") as f:
         index = read_yaml(f)
