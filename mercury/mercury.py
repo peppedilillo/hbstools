@@ -2,6 +2,9 @@ import hashlib
 from pathlib import Path
 from typing import Callable, Sequence
 import warnings
+from uuid import uuid4
+from math import log10
+from collections import Counter
 
 from astropy.io import fits
 import click
@@ -20,8 +23,6 @@ from yaml import YAMLError
 import hbstools as hbs
 from hbstools.data import map_event_to_files
 from hbstools.io import path_gtis
-from hbstools.io import write_bkg_fits
-from hbstools.io import write_source_fits
 from hbstools.types import Dataset
 from hbstools.types import Event
 
@@ -294,12 +295,12 @@ def unused_path(file: Path, num: int = 1, isdir: bool = False) -> Path:
     parts = file.stem.split("-")
     *tail, head = parts
     stem = "-".join(tail) if head.isdigit() else "-".join(parts)
-    return unused_path(
-        Path(file).parent.joinpath(f"{stem}-{num}{file.suffix}"), num + 1, isdir
-    )
+    fname = f"{stem}-{num}{file.suffix}"
+    return unused_path(file.parent / fname, num=num + 1, isdir=isdir)
 
 
 def fmt_filename(filename: str | Path) -> str:
+    """Rich formatting for filenames."""
     return f"'[b]{filename}[/]'"
 
 
@@ -326,8 +327,8 @@ def cli(ctx: click.Context, quiet: bool):
 def search_validate_config(
     ctx: click.Context, param: click.Option, config_path: Path | None
 ) -> dict:
-    """Validates user configuration option and records it."""
-    # checks that the YAML config is well written, with well-defined values.
+    """Validates user configuration option, and make sure it matches one of
+    the provided trigger algorithms."""
     try:
         config = config_schema.validate(parse_user_else_default_config(config_path))
     except YAMLError:
@@ -335,14 +336,14 @@ def search_validate_config(
     except SchemaError as error:
         raise click.BadParameter(f"Wrong inputs in config file: \n - {error}")
 
-    # check if we have an algorithm matching the user configuration.
+    # check if we have an algorithm compatible with the configuration.
     algorithm_params = config["algorithm_params"]
     try:
         algorithm_class = hbs.trigger.trigger_match(algorithm_params)
     except ValueError:
         raise click.BadParameter("Cannot find an algorithm matching the configuration.")
 
-    # store the algorithm name so that we can show it during execution.
+    # stores the algorithm's name and the configuration path to display them later.
     ctx.obj["search_algoname"] = str(algorithm_class(**algorithm_params))
     ctx.obj["search_config"] = None if used_default_config() else config_path
     return config
@@ -361,33 +362,45 @@ DEFAULT_LIBRARY_NAME = "mercury-results/"
 INDEX_FILENAME = ".mercury-index.yaml"
 
 
-def write_index(index: dict, path: Path):
-    with open(path / INDEX_FILENAME, "w") as f:
-        yaml.dump(index, f)
+def write_library(events: list[Event], dataset: Dataset, dir_path: Path):
+    """
+    Writes events to multiple fits files and store an index of them which
+    can be used to merge the results to the dataset.
 
+    :param events:
+    :param dataset:
+    :param dir_path: shall point to a directory. both the events and the index
+    are given default names.
+    """
 
-def write_library(events: list[Event], dataset: Dataset, path: Path):
-    from math import log10
+    def write_src(e: Event, filepath: Path, header: fits.Header | None = None):
+        """An helper for writing an event's source output file"""
+        content = pd.DataFrame([e])[["start", "end"]].to_records(index=False)
+        fits.writeto(filename=filepath, data=content, header=header)
+
+    def write_bkg(e: Event, filepath: Path, header: fits.Header | None = None):
+        """An helper for writing an event's background output file"""
+        content = pd.DataFrame(
+            {
+                "bkg_start": [e.bkg_pre_start, e.bkg_post_start],
+                "bkg_end": [e.bkg_post_start, e.bkg_post_end],
+            }
+        ).to_records(index=False)
+        fits.writeto(filename=filepath, data=content, header=header)
 
     event_map = map_event_to_files(events, dataset)
-    index = {}
-    width = int(log10(len(events))) + 1  # filename padding
+    index = {"uuid": uuid4().hex, "mappings": (fmap := {})}
+    width = int(log10(len(events))) + 1  # for filename padding
     for num, (event, root) in enumerate(event_map.items()):
-        _, header = fits.getdata(path_gtis(root), header=True)
-        suffix = f"-{num:0{width}}"
+        _, gti_header = fits.getdata(path_gtis(root), header=True)
+        write_src(event, src_path := dir_path / f"event-src-{num:0{width}}.fits", gti_header)
+        write_bkg(event, bkg_path := dir_path / f"event-bkg-{num:0{width}}.fits", gti_header)
 
-        write_source_fits(event, src_path := path / f"event-src{suffix}.fits", header)
-        write_bkg_fits(event, bkg_path := path / f"event-bkg{suffix}.fits", header)
-        index[src_path.name] = {
-            "root": str(root.absolute()),
-            "type": "src",
-        }
-        index[bkg_path.name] = {
-            "root": str(root.absolute()),
-            "type": "bkg",
-        }
+        fmap[src_path.name] = {"root": str(root.absolute()), "type": "src"}
+        fmap[bkg_path.name] = {"root": str(root.absolute()), "type": "bkg"}
 
-    write_index(index, path)
+    with open(dir_path / INDEX_FILENAME, "w") as f:
+        yaml.dump(index, f)
 
 
 @cli.command()
@@ -469,8 +482,8 @@ def search(
         write_catalog(events, filepath)
     elif mode == "library":
         dirpath = unused_path(output / DEFAULT_LIBRARY_NAME if output == Path(".") else output, isdir=True)
-        dirpath.mkdir()
         console.log(f"Writing to {fmt_filename(dirpath)}.")
+        dirpath.mkdir()
         write_library(events, dataset, dirpath)
 
     console.print("\nDone.\n")
@@ -523,8 +536,19 @@ def merge(ctx: click.Context, input_directory: Path):
     """Merge a library of results into a dataset."""
     from shutil import copy
 
-    # make sure the result directory was not already merged.
+    def filename(evtype: str, uuid_hex: str, uuid_substr: int = 4):
+        index_uuid_substring = uuid_hex[:uuid_substr]
+        return "".join(
+            [
+                DEFAULT_EVENT_NAME.stem,
+                f"-{index_uuid_substring}",
+                f"-{event_type}",
+                DEFAULT_EVENT_NAME.suffix,
+            ]
+        )
+
     merge_path = input_directory / DEFAULT_MERGE_NAME
+    # make sure the result directory was not already merged.
     if merge_path.is_file():
         raise click.UsageError("Input directory has already been merged.")
 
@@ -537,8 +561,9 @@ def merge(ctx: click.Context, input_directory: Path):
     with open(index_path, "r") as f:
         index = read_yaml(f)
 
-    files = [input_directory / file for file in index.keys()]
-    roots = [Path(index[file]["root"]) for file in index.keys()]
+    index_fmap = index["mappings"]
+    files = [input_directory / file for file in index_fmap.keys()]
+    roots = [Path(index_fmap[file]["root"]) for file in index_fmap.keys()]
 
     # checks that all result files and target directories exists
     if not all([f.exists() for f in [*files, *roots]]):
@@ -546,15 +571,13 @@ def merge(ctx: click.Context, input_directory: Path):
             f"Some of the indexed files or their root can not be found."
         )
 
-    types = [index[file]["type"] for file in index.keys()]
+    types = [index_fmap[file]["type"] for file in index_fmap.keys()]
 
     # move to destination folder and store info on moved files in a dict
     console = init_console(with_logo=False)
     merge_index = {}
-    for file, root, t in zip(files, roots, types):
-        dst = unused_path(
-            root / (DEFAULT_EVENT_NAME.stem + f"-{t}" + DEFAULT_EVENT_NAME.suffix)
-        )
+    for file, root, event_type in zip(files, roots, types):
+        dst = unused_path(root / filename(event_type, index["uuid"]))
         copy(file, dst)
         merge_index[str(file)] = {"dst": str(dst), "hash": sha1_hash(file)}
 
@@ -576,7 +599,7 @@ def clean(ctx: click.Context, input_directory: Path):
     # make sure the result directory was not already merged.
     merge_index_path = input_directory / DEFAULT_MERGE_NAME
     if not merge_index_path.is_file():
-        raise click.UsageError("The input directory has already been merged.")
+        raise click.UsageError("The input directory is not a result folder or has not been merged yet.")
 
     with open(merge_index_path, "r") as f:
         merge_index = read_yaml(f)

@@ -50,18 +50,3 @@ def read_event_files(data_folder: str | Path) -> pd.DataFrame:
         )
 
     return _read_event_files(path_xdata(data_folder), path_sdata(data_folder))
-
-
-def write_source_fits(event: Event, filepath: Path, header: fits.Header | None = None):
-    content = pd.DataFrame([event])[["start", "end"]].to_records(index=False)
-    fits.writeto(filename=filepath, data=content, header=header, overwrite=True)
-
-
-def write_bkg_fits(event: Event, filepath: Path, header: fits.Header | None = None):
-    content = pd.DataFrame(
-        {
-            "bkg_start": [event.bkg_pre_start, event.bkg_post_start],
-            "bkg_end": [event.bkg_post_start, event.bkg_post_end],
-        }
-    ).to_records(index=False)
-    fits.writeto(filename=filepath, data=content, header=header, overwrite=True)
