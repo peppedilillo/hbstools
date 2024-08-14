@@ -1,10 +1,10 @@
+from collections import Counter
 import hashlib
+from math import log10
 from pathlib import Path
 from typing import Callable, Sequence
-import warnings
 from uuid import uuid4
-from math import log10
-from collections import Counter
+import warnings
 
 from astropy.io import fits
 import click
@@ -393,8 +393,12 @@ def write_library(events: list[Event], dataset: Dataset, dir_path: Path):
     width = int(log10(len(events))) + 1  # for filename padding
     for num, (event, root) in enumerate(event_map.items()):
         _, gti_header = fits.getdata(path_gtis(root), header=True)
-        write_src(event, src_path := dir_path / f"event-src-{num:0{width}}.fits", gti_header)
-        write_bkg(event, bkg_path := dir_path / f"event-bkg-{num:0{width}}.fits", gti_header)
+        write_src(
+            event, src_path := dir_path / f"event-src-{num:0{width}}.fits", gti_header
+        )
+        write_bkg(
+            event, bkg_path := dir_path / f"event-bkg-{num:0{width}}.fits", gti_header
+        )
 
         fmap[src_path.name] = {"root": str(root.absolute()), "type": "src"}
         fmap[bkg_path.name] = {"root": str(root.absolute()), "type": "bkg"}
@@ -599,7 +603,9 @@ def clean(ctx: click.Context, input_directory: Path):
     # make sure the result directory was not already merged.
     merge_index_path = input_directory / DEFAULT_MERGE_NAME
     if not merge_index_path.is_file():
-        raise click.UsageError("The input directory is not a result folder or has not been merged yet.")
+        raise click.UsageError(
+            "The input directory is not a result folder or has not been merged yet."
+        )
 
     with open(merge_index_path, "r") as f:
         merge_index = read_yaml(f)
