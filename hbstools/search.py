@@ -54,7 +54,14 @@ def search_log(write: Callable):
             try:
                 rs = f(data, gti)
             except ValueError:
-                write(f"[red]Error: invalid algorithm input.[/]")
+                write(
+                    f""
+                    f"[red]Error: invalid algorithm input.[/]\n"
+                    f"[yellow]└──▶ This error is returned whenever a number of quadrants "
+                    f"greater than `majority` is passed enough invalid (non-positive) "
+                    f"count inputs. If you are sure the data you  provided are fine, "
+                    f"make sure the `majority` configuration parameter is well-set.[/]"
+                )
                 return []
             if rs:
                 write(f"Found [b]{len(rs)}[/] transient{'s' if len(rs) > 1 else ''}")
