@@ -35,7 +35,7 @@ outputs = [
 class TestFormatResult(unittest.TestCase):
     def test_equal(self):
         for x, y in zip(inputs, outputs):
-            self.assertEqual(format_results.__wrapped__(x, **format_params), y)
+            self.assertEqual(format_results(x, **format_params), y)
 
 
 if __name__ == "__main__":

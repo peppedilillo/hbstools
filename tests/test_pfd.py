@@ -37,7 +37,7 @@ class TestPFD(unittest.TestCase):
         results = search(dataset, configuration)
 
         self.assertTrue(len(results) == 1)
-        self.assertTrue(abs(results["event_start"].iloc[0] - TRIGTIME) < 5)
+        self.assertTrue(abs(results[0].start - TRIGTIME) < 5)
 
 
 if __name__ == "__main__":

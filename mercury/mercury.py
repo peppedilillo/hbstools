@@ -1,4 +1,3 @@
-from collections import Counter
 import hashlib
 from math import log10
 from pathlib import Path
@@ -373,9 +372,9 @@ def write_library(events: list[Event], dataset: Dataset, dir_path: Path):
     are given default names.
     """
 
-    def write_src(e: Event, filepath: Path, header: fits.Header | None = None):
+    def write_src(event: Event, filepath: Path, header: fits.Header | None = None):
         """An helper for writing an event's source output file"""
-        content = pd.DataFrame([e])[["start", "end"]].to_records(index=False)
+        content = pd.DataFrame([event])[["start", "end"]].to_records(index=False)
         fits.writeto(filename=filepath, data=content, header=header)
 
     def write_bkg(e: Event, filepath: Path, header: fits.Header | None = None):
@@ -518,6 +517,7 @@ def drop(ctx: click.Context, output: Path):
 
 def sha1_hash(path: Path):
     with open(path, "rb") as f:
+        # noinspection PyTypeChecker
         hsh = hashlib.file_digest(f, "sha1").hexdigest()
     return hsh
 
@@ -533,7 +533,7 @@ DEFAULT_MERGE_NAME = ".mercury-merge.yaml"
 )
 @click.pass_context
 def merge(ctx: click.Context, input_directory: Path):
-    """Merge a library of results into a dataset."""
+    """Merge a library of results into its dataset."""
     from shutil import copy
 
     def fname(evtype: str, uuid_hex: str, uuid_substr: int = 4):
@@ -577,6 +577,10 @@ def merge(ctx: click.Context, input_directory: Path):
     console = init_console(with_logo=False)
     merge_index = {}
     for file, root, event_type in zip(files, roots, types):
+        # TODO: using `unused_path` we avoid potential clashes due to a repeated
+        #  uuid substring but do not pad the filenames so the directory content
+        #  can look messy if more than 10 files are generated. shall eventually
+        #  find a better way to name these files.
         copy(file, dst := unused_path(root / fname(event_type, index["uuid"])))
         merge_index[str(file)] = {"dst": str(dst), "hash": sha1_hash(file)}
 
@@ -593,6 +597,7 @@ def merge(ctx: click.Context, input_directory: Path):
 )
 @click.pass_context
 def clean(ctx: click.Context, input_directory: Path):
+    """Undoes a merge, removing event data file from a dataset."""
     from os import remove
 
     # make sure the result directory was not already merged.

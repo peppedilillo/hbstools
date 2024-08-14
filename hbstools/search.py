@@ -13,6 +13,7 @@ import hbstools.trigger as trig
 from hbstools.types import ChangepointMET
 from hbstools.types import Dataset
 from hbstools.types import GTI
+from hbstools.types import Event
 
 
 def search_set(
@@ -70,7 +71,7 @@ def search(
     dataset: Dataset,
     configuration: dict,
     console: Console | None = None,
-):
+) -> list[Event]:
     """
     An interface to search.
 
