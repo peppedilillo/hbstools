@@ -390,15 +390,11 @@ def write_library(events: list[Event], dataset: Dataset, dir_path: Path):
 
     event_map = map_event_to_files(events, dataset)
     index = {"uuid": uuid4().hex, "mappings": (fmap := {})}
-    width = int(log10(len(events))) + 1  # for filename padding
-    for num, (event, root) in enumerate(event_map.items()):
-        _, gti_header = fits.getdata(path_gtis(root), header=True)
-        write_src(
-            event, src_path := dir_path / f"event-src-{num:0{width}}.fits", gti_header
-        )
-        write_bkg(
-            event, bkg_path := dir_path / f"event-bkg-{num:0{width}}.fits", gti_header
-        )
+    pad = int(log10(len(events))) + 1  # for filename padding
+    for n, (event, root) in enumerate(event_map.items()):
+        _, header = fits.getdata(path_gtis(root), header=True)
+        write_src(event, src_path := dir_path / f"event-src-{n:0{pad}}.fits", header)
+        write_bkg(event, bkg_path := dir_path / f"event-bkg-{n:0{pad}}.fits", header)
 
         fmap[src_path.name] = {"root": str(root.absolute()), "type": "src"}
         fmap[bkg_path.name] = {"root": str(root.absolute()), "type": "bkg"}
@@ -540,13 +536,13 @@ def merge(ctx: click.Context, input_directory: Path):
     """Merge a library of results into a dataset."""
     from shutil import copy
 
-    def filename(evtype: str, uuid_hex: str, uuid_substr: int = 4):
+    def fname(evtype: str, uuid_hex: str, uuid_substr: int = 4):
         index_uuid_substring = uuid_hex[:uuid_substr]
         return "".join(
             [
                 DEFAULT_EVENT_NAME.stem,
                 f"-{index_uuid_substring}",
-                f"-{event_type}",
+                f"-{evtype}",
                 DEFAULT_EVENT_NAME.suffix,
             ]
         )
@@ -581,8 +577,7 @@ def merge(ctx: click.Context, input_directory: Path):
     console = init_console(with_logo=False)
     merge_index = {}
     for file, root, event_type in zip(files, roots, types):
-        dst = unused_path(root / filename(event_type, index["uuid"]))
-        copy(file, dst)
+        copy(file, dst := unused_path(root / fname(event_type, index["uuid"])))
         merge_index[str(file)] = {"dst": str(dst), "hash": sha1_hash(file)}
 
     # save infos to a yaml file that can be used to revert the merge
