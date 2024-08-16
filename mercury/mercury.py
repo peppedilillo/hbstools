@@ -1,7 +1,7 @@
 import hashlib
 from math import log10
 from pathlib import Path
-from typing import Callable, Sequence
+from typing import Sequence
 from uuid import uuid4
 import warnings
 
@@ -215,36 +215,6 @@ config_schema = Schema(
 )
 
 
-def _default_config() -> tuple[Callable, Callable]:
-    def show() -> str:
-        """Returns default config"""
-        if called_yet[0]:
-            return DEFAULT_CONFIG
-        else:
-            called_yet[0] = True
-            return DEFAULT_CONFIG
-
-    def tell() -> bool:
-        """A sentinel. It tells if default config was ever called"""
-        return called_yet[0]
-
-    called_yet = [False]
-    return show, tell
-
-
-default_config, used_default_config = _default_config()
-
-
-def parse_user_else_default_config(config_path: Path | None) -> dict:
-    """Opens the configuration file, if provided, or get values from default."""
-    if config_path is None:
-        configuration = read_yaml(default_config())
-    else:
-        with open(config_path, "r") as stream:
-            configuration = read_yaml(stream)
-    return configuration
-
-
 def crawler(
     directory: Path | str,
     targets: Sequence[str],
@@ -327,16 +297,23 @@ def search_validate_config(
     ctx: click.Context, param: click.Option, config_path: Path | None
 ) -> dict:
     """Validates user configuration option, and make sure it matches one of
-    the provided trigger algorithms."""
+    the available trigger algorithms."""
+
+    if config_path is None:
+        config = read_yaml(DEFAULT_CONFIG)
+    else:
+        with open(config_path, "r") as stream:
+            config = read_yaml(stream)
+
     try:
-        config = config_schema.validate(parse_user_else_default_config(config_path))
+        validated_config = config_schema.validate(config)
     except YAMLError:
         raise click.BadParameter("Cannot parse YAML configuration file.")
     except SchemaError as error:
         raise click.BadParameter(f"Wrong inputs in config file: \n - {error}")
 
     # check if we have an algorithm compatible with the configuration.
-    algorithm_params = config["algorithm_params"]
+    algorithm_params = validated_config["algorithm_params"]
     try:
         algorithm_class = hbs.trigger.trigger_match(algorithm_params)
     except ValueError:
@@ -344,8 +321,8 @@ def search_validate_config(
 
     # stores the algorithm's name and the configuration path to display them later.
     ctx.obj["search_algoname"] = str(algorithm_class(**algorithm_params))
-    ctx.obj["search_config"] = None if used_default_config() else config_path
-    return config
+    ctx.obj["search_config"] = None if config_path is None else config_path
+    return validated_config
 
 
 DEFAULT_CATALOG_NAME = "mercury-results.fits"
@@ -387,10 +364,9 @@ def write_library(events: list[Event], dataset: Dataset, dir_path: Path):
         ).to_records(index=False)
         fits.writeto(filename=filepath, data=content, header=header)
 
-    event_map = map_event_to_files(events, dataset)
     index = {"uuid": uuid4().hex, "mappings": (fmap := {})}
     pad = int(log10(len(events))) + 1  # for filename padding
-    for n, (event, root) in enumerate(event_map.items()):
+    for n, (event, root) in enumerate(map_event_to_files(events, dataset).items()):
         _, header = fits.getdata(path_gtis(root), header=True)
         write_src(event, src_path := dir_path / f"event-src-{n:0{pad}}.fits", header)
         write_bkg(event, bkg_path := dir_path / f"event-bkg-{n:0{pad}}.fits", header)
@@ -404,8 +380,9 @@ def write_library(events: list[Event], dataset: Dataset, dir_path: Path):
 
 @cli.command()
 @click.argument(
-    "input_dir",
+    "input_dirs",
     type=click.Path(exists=True, file_okay=False, path_type=Path),
+    nargs=-1,
 )
 @click.option(
     "-o",
@@ -445,13 +422,13 @@ def write_library(events: list[Event], dataset: Dataset, dir_path: Path):
 @click.pass_context
 def search(
     ctx: click.Context,
-    input_dir: Path,
+    input_dirs: tuple[Path],
     output: Path,
     configuration: dict,
     mode: str,
     recursion_limit: int,
 ):
-    """Searches transients from data in a folder.
+    """Searches transients from data in the input directories.
     The algorithm used for this search is called Poisson-FOCuS (Ward, 2022; Dilillo, 2024).
     The search is configurable using a YAML configuration, see mercury's 'drop' command.
     """
@@ -463,7 +440,10 @@ def search(
     console.log(f"Algorithm {ctx.obj['search_algoname']} matches the configuration.")
 
     search_targets = ["gti.fits", "out_s_cl.evt", "out_x_cl.evt"]
-    data_paths = crawler(input_dir, search_targets, recursion_limit)
+    data_paths = {
+        subdir for directory in input_dirs
+        for subdir in crawler(directory, search_targets, recursion_limit)
+    }
     if not data_paths:
         console.print("\nFound no data. Exiting.\n")
         return
@@ -503,9 +483,9 @@ def drop(ctx: click.Context, output: Path):
     """Saves a yaml configuration default stub."""
     console = init_console(with_logo=False)
     config_text = (
-        write_yaml(read_yaml(default_config()))
+        write_yaml(read_yaml(DEFAULT_CONFIG))  # removes comments
         if ctx.obj["quiet"]
-        else default_config()
+        else DEFAULT_CONFIG
     )
     filepath = unused_path(
         output if not output.is_dir() else output / DEFAULT_CONFIG_NAME

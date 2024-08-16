@@ -57,10 +57,12 @@ def search_log(write: Callable):
                 write(
                     f""
                     f"[red]Error: invalid algorithm input.[/]\n"
-                    f"[yellow]└──▶ This error is returned whenever a number of quadrants "
-                    f"greater than `majority` is passed enough invalid (non-positive) "
-                    f"count inputs. If you are sure the data you  provided are fine, "
-                    f"make sure the `majority` configuration parameter is well-set.[/]"
+                    f"[yellow]└──▶ This error is returned when enough invalid "
+                    f"(non-positive) count data are passed to the trigger algorithms. "
+                    f"If you are sure the data you provided are sane, make sure "
+                    f"that the `majority` configuration parameter is well-set "
+                    f"and, in particular, that it does not exceed the number of "
+                    f"working detector quadrants.[/]"
                 )
                 return []
             if rs:
