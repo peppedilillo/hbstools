@@ -17,7 +17,7 @@ from hbstools.types import MET
 
 
 def catalog(data_folders: Iterable[Path | str]) -> Dataset:
-    """Takes a possibly unsorted collection of paths, sort it and returns a Dataset,
+    """Takes an unsorted collection of paths, sort it and returns a Dataset,
     i.e. list of (GTI, filepath) tuples, sorted by the start time of the GTIs."""
     unsorted_gtis = {dp: read_gti_files(dp) for dp in data_folders}
     sorted_folders = sorted(data_folders, key=lambda d: unsorted_gtis[d][0].start)
