@@ -440,7 +440,7 @@ def search(
     console.log(f"Loaded {fmt_filename(config_file)} configuration.")
     console.log(f"Algorithm {ctx.obj['search_algoname']} matches the configuration.")
 
-    search_targets = ["gti.fits", "out_s_cl.evt", "out_x_cl.evt"]
+    search_targets = ["gti.fits", "out_lv1_cl.evt"]
     data_paths = {
         subdir for directory in input_dirs
         for subdir in crawler(directory, search_targets, recursion_limit)

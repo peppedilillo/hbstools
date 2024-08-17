@@ -3,9 +3,7 @@
 **/__pycache__
 **/.ipynb_checkpoints
 **/.mypy-cache
-**/*.fits
 *venv*/
 build
 notebooks
-data
 CONTRIBUTING.md

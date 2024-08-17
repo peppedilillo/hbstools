@@ -7,14 +7,9 @@ from pandas.api.types import CategoricalDtype
 from hbstools.types import GTI
 
 
-def path_xdata(data_folder: str | Path) -> Path:
+def path_data(data_folder: str | Path) -> Path:
     """Returns path to x events"""
-    return Path(data_folder).joinpath("out_x_cl.evt")
-
-
-def path_sdata(data_folder: str | Path) -> Path:
-    """Returns path to s events"""
-    return Path(data_folder).joinpath("out_s_cl.evt")
+    return Path(data_folder).joinpath("out_lv1_cl.evt")
 
 
 def path_gtis(data_folder: str | Path) -> Path:
@@ -33,19 +28,16 @@ def read_gti_files(data_folder: str | Path) -> list[GTI]:
 
 def read_event_files(data_folder: str | Path) -> pd.DataFrame:
     def _read_event_files(
-        xdata_path: str | Path, sdata_path: str | Path
+        data_path: str | Path
     ) -> pd.DataFrame:
         """Opens the data files and merges them"""
-        with fits.open(xdata_path) as hdul:
-            xdata_df = pd.DataFrame(hdul[1].data)
-        with fits.open(sdata_path) as hdul:
+        with fits.open(data_path) as hdul:
             sdata_df = pd.DataFrame(hdul[1].data)
         category_quads_t = CategoricalDtype(categories=[0, 1, 2, 3], ordered=True)
-        return (
-            pd.concat([xdata_df, sdata_df])
-            .sort_values(by=["TIME"])
-            .astype({"QUADID": category_quads_t})
-            .reset_index(drop=True)
-        )
+        category_etype_t = CategoricalDtype(categories=[1, 2])
+        return sdata_df.astype({
+            "QUADID": category_quads_t,
+            "EVTYPE": category_etype_t
+        })
 
-    return _read_event_files(path_xdata(data_folder), path_sdata(data_folder))
+    return _read_event_files(path_data(data_folder))
