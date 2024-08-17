@@ -5,7 +5,6 @@ import pandas as pd
 from rich.console import Console
 from rich.progress import track
 
-from hbstools.data import catalog
 from hbstools.data import filter_energy
 from hbstools.data import stream
 from hbstools.format import format_results

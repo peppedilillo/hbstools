@@ -5,13 +5,13 @@ from hbstools.data import stream
 from hbstools.types import GTI
 
 inputs = {
-    "data_300s_constant/test_dataset_light1",
-    "data_300s_constant/test_dataset_light2",
-    "data_300s_constant/test_dataset_light3",
-    "data_300s_constant/test_dataset_light4",
-    "data_300s_constant/test_dataset_light5",
-    "data_300s_constant/test_dataset_light6",
-    "data_300s_constant/test_dataset_light7",
+    "data_300s_constant/data_300s_constant1",
+    "data_300s_constant/data_300s_constant2",
+    "data_300s_constant/data_300s_constant3",
+    "data_300s_constant/data_300s_constant4",
+    "data_300s_constant/data_300s_constant5",
+    "data_300s_constant/data_300s_constant6",
+    "data_300s_constant/data_300s_constant7",
 }
 
 # key = merging tolerance

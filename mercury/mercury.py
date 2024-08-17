@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Sequence
 from uuid import uuid4
 import warnings
+from glob import glob
 
 from astropy.io import fits
 import click
@@ -220,7 +221,7 @@ def crawler(
     targets: Sequence[str],
     recursion_limit: int = 1,
 ) -> set[Path]:
-    """Crawls through folder looking for subfolders containing a specific set of files.
+    """Go through directories looking for subdirs containing a specific set of files.
     if `recursion_limit=0`  we only check the present folder, ignoring its subdirectories.
     We return a set, which has no meaningful order."""
 
@@ -228,8 +229,8 @@ def crawler(
         return [f for f in d.iterdir() if f.is_dir()]
 
     def directory_contains(d: Path, ts) -> bool:
-        for file in ts:
-            if not d.joinpath(file).is_file():
+        for pattern in ts:
+            if not glob(pattern, root_dir=d):
                 return False
         return True
 

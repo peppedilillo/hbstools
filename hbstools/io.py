@@ -4,7 +4,6 @@ from astropy.io import fits  # type: ignore[import-untyped]
 import pandas as pd
 from pandas.api.types import CategoricalDtype
 
-from hbstools.types import Event
 from hbstools.types import GTI
 
 
