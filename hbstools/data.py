@@ -1,5 +1,3 @@
-from functools import reduce
-from itertools import pairwise
 from math import isclose
 from pathlib import Path
 from typing import Iterable
@@ -9,27 +7,18 @@ import numpy as np
 import pandas as pd
 
 from hbstools.io import read_event_files
-from hbstools.io import read_gti_files
+from hbstools.io import read_gti_data
 from hbstools.types import Dataset
 from hbstools.types import Event
 from hbstools.types import GTI
 from hbstools.types import MET
 
 
-def catalog(data_folders: Iterable[Path | str]) -> Dataset:
-    """Takes an unsorted collection of paths, sort it and returns a Dataset,
-    i.e. list of (GTI, filepath) tuples, sorted by the start time of the GTIs."""
-    unsorted_gtis = {dp: read_gti_files(dp) for dp in data_folders}
-    sorted_folders = sorted(data_folders, key=lambda d: unsorted_gtis[d][0].start)
-    sorted_gtis = [unsorted_gtis[dp] for dp in sorted_folders]
-
-    def is_sorted(xs):
-        return len(xs) < 2 or reduce(lambda acc, x: acc and x[0] < x[1], pairwise(xs))
-
-    assert is_sorted([gti.start for gtis in sorted_gtis for gti in gtis]) and is_sorted(
-        [gti.end for gtis in sorted_gtis for gti in gtis]
-    )
-    return [(gti, dp) for gtis, dp in zip(sorted_gtis, sorted_folders) for gti in gtis]
+def catalog(data_paths: Iterable[tuple[Path]]) -> Dataset:
+    """Takes an unsorted collection of (data_path, gti_path) paths, and sorts
+    it by the start time of the first GTI."""
+    sorted_data_paths = sorted(data_paths, key=lambda d: read_gti_data(d[-1])[0].start)
+    return [((fp, gtip), gti) for fp, gtip in sorted_data_paths for gti in read_gti_data(gtip)]
 
 
 def _overlap(x: GTI, y: GTI, abs_tol: float) -> bool:
@@ -64,10 +53,11 @@ def stream(
     :return:
     """
     # fp is for filepath, `p` prefix is for `pointer` or `past`
-    (pgti, pfp), *dataset = dataset
+    ((pfp, _), pgti), *dataset = dataset
     df = read_event_files(pfp)
     pdf = _between(df, *pgti)
-    for gti, fp in dataset:
+    for (fp, _), gti in dataset:
+        # next line avoids multiple reads of the same data file.
         df = read_event_files(fp) if fp != pfp else df
         if not _overlap(pgti, gti, abs_tol):
             yield pdf, pgti
@@ -76,6 +66,7 @@ def stream(
         else:
             pdf = pd.concat((pdf, _between(df, max(pgti.end, gti.start), gti.end)))
             pgti = GTI(pgti.start, gti.end)
+        pfp = fp
     yield pdf, pgti
     return
 
@@ -134,7 +125,7 @@ def histogram_quadrants(
 def map_event_to_files(events: list[Event], dataset: Dataset) -> dict[Event, Path]:
     """Returns a dictionary of events and filepath. The filepath associated to
     an event is the one containing the event's start MET."""
-    gtis, datafiles = list(zip(*dataset))
+    datafiles, gtis = list(zip(*dataset))
     gtis_starts = [gti.start for gti in gtis]
     ids = [bisect_right(gtis_starts, e.start) - 1 for e in events]
     assert -1 not in ids

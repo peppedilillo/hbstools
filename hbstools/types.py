@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import NamedTuple
 
 MET = float
@@ -17,7 +16,14 @@ class GTI(NamedTuple):
     end: MET
 
 
-Dataset = list[tuple[GTI, Path]]
+# Dataset are nothing special really, they are lists of tuples built like this:
+# ┌──────────────────────────────────────────────┐┌──────────────────────────────┐
+# │[((Path('file1.evt'), Path('file1_gti.fits')),││ GTI(start=0.0, end=54.0)),   │
+# │ ((Path('file2.evt'), Path('file2_gti.fits')),││ GTI(start=51.0, end=79.0)),  │
+# │ ((Path('file2.evt'), Path('file2_gti.fits')),││ GTI(start=83.0, end=108.0)), │
+# │ ((Path('file3.evt'), Path('file3_gti.fits')),││ GTI(start=108.5, end=133.0))]│
+# └──────────────────datafiles───────────────────┘└──────────────gtis────────────┘
+Dataset = list[tuple[tuple, GTI]]
 
 
 class Event(NamedTuple):

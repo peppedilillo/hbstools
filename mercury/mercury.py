@@ -22,7 +22,6 @@ from yaml import YAMLError
 
 import hbstools as hbs
 from hbstools.data import map_event_to_files
-from hbstools.io import path_gtis
 from hbstools.types import Dataset
 from hbstools.types import Event
 
@@ -218,40 +217,52 @@ config_schema = Schema(
 
 def crawler(
     directory: Path | str,
-    targets: Sequence[str],
+    patterns: Sequence[str],
     recursion_limit: int = 1,
-) -> set[Path]:
-    """Go through directories looking for subdirs containing a specific set of files.
-    if `recursion_limit=0`  we only check the present folder, ignoring its subdirectories.
-    We return a set, which has no meaningful order."""
+) -> set[tuple[Path]]:
+    """Goes through directories looking for subdirs containing a specific set of files
+    matching unix-style patterns.
+    If `recursion_limit=0`  we only check the present folder, ignoring its subdirectories.
+    Returns a set (unordered) of tuples. Each tuple is composed of `n` path-objects,
+    where `n` equals the number of patterns. Each path-object points to a matching file in
+    a subdirectory. Partial matches are discarded. An error is raised if more than one
+    file matches a pattern.
+    """
 
     def get_subdirs(d: Path) -> list[Path]:
         return [f for f in d.iterdir() if f.is_dir()]
 
-    def directory_contains(d: Path, ts) -> bool:
-        for pattern in ts:
-            if not glob(pattern, root_dir=d):
-                return False
-        return True
+    def directory_contains(d: Path, ps) -> tuple:
+        matches = {p: [d / f for f in glob(p, root_dir=d)] for p in ps}
+        # if we do not get a full match we return without errors
+        if any([not matches[pattern] for pattern in ps]):
+            return tuple()
+        # raise an error if we got an ambiguous match
+        if not all(len(ms) == 1 for ms in matches.values()):
+            raise click.FileError(
+                f"Directory {d} contains multiple files pattern matching against "
+                f"`{', '.join([p for p in ps if len(matches[p]) != 1])}`."
+            )
+        return tuple(m for p in ps for m in matches[p])
 
     def check_subdirs(
-        subdirs: list[Path], ts, rlim: int, recursion_acc: int, acc: set[Path]
+        subdirs: list[Path], ps, rlim: int, recursion_acc: int, acc: set[tuple]
     ):
         if not subdirs:
             return []
         car, *cdr = subdirs
-        check_dir(car, ts, rlim, recursion_acc + 1, acc)
-        check_subdirs(cdr, ts, rlim, recursion_acc, acc)
+        check_dir(car, ps, rlim, recursion_acc + 1, acc)
+        check_subdirs(cdr, ps, rlim, recursion_acc, acc)
 
-    def check_dir(d: Path, ts, rlim, recursion_acc: int, acc: set[Path]) -> set[Path]:
+    def check_dir(d: Path, ps, rlim, recursion_acc: int, acc: set[tuple]) -> set[tuple]:
         if recursion_acc == rlim + 1:
             return acc
-        if directory_contains(d, ts):
-            acc.add(d)
-        check_subdirs(get_subdirs(d), ts, rlim, recursion_acc, acc)
+        if matches := directory_contains(d, ps):
+            acc.add(matches)
+        check_subdirs(get_subdirs(d), ps, rlim, recursion_acc, acc)
         return acc
 
-    return check_dir(Path(directory), targets, recursion_limit, 0, set())
+    return check_dir(Path(directory), patterns, recursion_limit, 0, set())
 
 
 def unused_path(file: Path, num: int = 1, isdir: bool = False) -> Path:
@@ -351,12 +362,12 @@ def write_library(events: list[Event], dataset: Dataset, dir_path: Path):
     """
 
     def write_src(event: Event, filepath: Path, header: fits.Header | None = None):
-        """An helper for writing an event's source output file"""
+        """A helper for writing an event's source output file"""
         content = pd.DataFrame([event])[["start", "end"]].to_records(index=False)
         fits.writeto(filename=filepath, data=content, header=header)
 
     def write_bkg(e: Event, filepath: Path, header: fits.Header | None = None):
-        """An helper for writing an event's background output file"""
+        """A helper for writing an event's background output file"""
         content = pd.DataFrame(
             {
                 "bkg_start": [e.bkg_pre_start, e.bkg_post_start],
@@ -367,13 +378,12 @@ def write_library(events: list[Event], dataset: Dataset, dir_path: Path):
 
     index = {"uuid": uuid4().hex, "mappings": (fmap := {})}
     pad = int(log10(len(events))) + 1  # for filename padding
-    for n, (event, root) in enumerate(map_event_to_files(events, dataset).items()):
-        _, header = fits.getdata(path_gtis(root), header=True)
+    for n, (event, (_, gti_path)) in enumerate(map_event_to_files(events, dataset).items()):
+        header = hbs.io.read_gti_header(gti_path)
         write_src(event, src_path := dir_path / f"event-src-{n:0{pad}}.fits", header)
         write_bkg(event, bkg_path := dir_path / f"event-bkg-{n:0{pad}}.fits", header)
-
-        fmap[src_path.name] = {"root": str(root.absolute()), "type": "src"}
-        fmap[bkg_path.name] = {"root": str(root.absolute()), "type": "bkg"}
+        fmap[src_path.name] = {"root": str(gti_path.parent.absolute()), "type": "src"}
+        fmap[bkg_path.name] = {"root": str(gti_path.parent.absolute()), "type": "bkg"}
 
     with open(dir_path / INDEX_FILENAME, "w") as f:
         yaml.dump(index, f)
@@ -440,10 +450,10 @@ def search(
     console.log(f"Loaded {fmt_filename(config_file)} configuration.")
     console.log(f"Algorithm {ctx.obj['search_algoname']} matches the configuration.")
 
-    search_targets = ["gti.fits", "out_lv1_cl.evt"]
+    patterns = ["*_lv1_cl.evt", "*gti.fits"]
     data_paths = {
         subdir for directory in input_dirs
-        for subdir in crawler(directory, search_targets, recursion_limit)
+        for subdir in crawler(directory, patterns, recursion_limit)
     }
     if not data_paths:
         console.print("\nFound no data. Exiting.\n")
@@ -493,7 +503,7 @@ def drop(ctx: click.Context, output: Path):
     )
     with open(filepath, "w") as file:
         file.write(config_text)
-    console.print(f"Created configuration file '{fmt_filename(filepath)}' :sparkles:.")
+    console.print(f"Created configuration file {fmt_filename(filepath)} :sparkles:.")
 
 
 def sha1_hash(path: Path):
