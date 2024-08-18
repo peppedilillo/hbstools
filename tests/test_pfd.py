@@ -6,10 +6,12 @@ from hbstools.trigger import trigger_match
 import hbstools.triggers.poissonfocusdes as pfd
 from hbstools.types import GTI
 
-data_paths = [(
-    "data_100s_stronganomaly60s/out_lv1_cl.evt",
-    "data_100s_stronganomaly60s/gti.fits",
-)]
+data_paths = [
+    (
+        "data_100s_stronganomaly60s/out_lv1_cl.evt",
+        "data_100s_stronganomaly60s/gti.fits",
+    )
+]
 
 
 TRIGTIME = 60

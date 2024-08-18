@@ -18,7 +18,11 @@ def catalog(data_paths: Iterable[tuple[Path]]) -> Dataset:
     """Takes an unsorted collection of (data_path, gti_path) paths, and sorts
     it by the start time of the first GTI."""
     sorted_data_paths = sorted(data_paths, key=lambda d: read_gti_data(d[-1])[0].start)
-    return [((fp, gtip), gti) for fp, gtip in sorted_data_paths for gti in read_gti_data(gtip)]
+    return [
+        ((fp, gtip), gti)
+        for fp, gtip in sorted_data_paths
+        for gti in read_gti_data(gtip)
+    ]
 
 
 def _overlap(x: GTI, y: GTI, abs_tol: float) -> bool:

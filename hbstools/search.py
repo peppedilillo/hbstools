@@ -10,8 +10,8 @@ from hbstools.format import format_results
 import hbstools.trigger as trig
 from hbstools.types import ChangepointMET
 from hbstools.types import Dataset
-from hbstools.types import GTI
 from hbstools.types import Event
+from hbstools.types import GTI
 
 
 def search_set(

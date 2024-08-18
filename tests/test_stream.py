@@ -5,13 +5,34 @@ from hbstools.data import stream
 from hbstools.types import GTI
 
 inputs = {
-    ("data_300s_constant/data_300s_constant1/out_lv1_cl.evt", "data_300s_constant/data_300s_constant1/gti.fits"),
-    ("data_300s_constant/data_300s_constant2/out_lv1_cl.evt", "data_300s_constant/data_300s_constant2/gti.fits"),
-    ("data_300s_constant/data_300s_constant3/out_lv1_cl.evt", "data_300s_constant/data_300s_constant3/gti.fits"),
-    ("data_300s_constant/data_300s_constant4/out_lv1_cl.evt", "data_300s_constant/data_300s_constant4/gti.fits"),
-    ("data_300s_constant/data_300s_constant5/out_lv1_cl.evt", "data_300s_constant/data_300s_constant5/gti.fits"),
-    ("data_300s_constant/data_300s_constant6/out_lv1_cl.evt", "data_300s_constant/data_300s_constant6/gti.fits"),
-    ("data_300s_constant/data_300s_constant7/out_lv1_cl.evt", "data_300s_constant/data_300s_constant7/gti.fits"),
+    (
+        "data_300s_constant/data_300s_constant1/out_lv1_cl.evt",
+        "data_300s_constant/data_300s_constant1/gti.fits",
+    ),
+    (
+        "data_300s_constant/data_300s_constant2/out_lv1_cl.evt",
+        "data_300s_constant/data_300s_constant2/gti.fits",
+    ),
+    (
+        "data_300s_constant/data_300s_constant3/out_lv1_cl.evt",
+        "data_300s_constant/data_300s_constant3/gti.fits",
+    ),
+    (
+        "data_300s_constant/data_300s_constant4/out_lv1_cl.evt",
+        "data_300s_constant/data_300s_constant4/gti.fits",
+    ),
+    (
+        "data_300s_constant/data_300s_constant5/out_lv1_cl.evt",
+        "data_300s_constant/data_300s_constant5/gti.fits",
+    ),
+    (
+        "data_300s_constant/data_300s_constant6/out_lv1_cl.evt",
+        "data_300s_constant/data_300s_constant6/gti.fits",
+    ),
+    (
+        "data_300s_constant/data_300s_constant7/out_lv1_cl.evt",
+        "data_300s_constant/data_300s_constant7/gti.fits",
+    ),
 }
 
 # key = merging tolerance

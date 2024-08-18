@@ -6,10 +6,12 @@ from hbstools.trigger import trigger_match
 import hbstools.triggers.bft as bft
 from hbstools.types import GTI
 
-data_paths = [(
-    "data_100s_stronganomaly60s/out_lv1_cl.evt",
-    "data_100s_stronganomaly60s/gti.fits",
-)]
+data_paths = [
+    (
+        "data_100s_stronganomaly60s/out_lv1_cl.evt",
+        "data_100s_stronganomaly60s/gti.fits",
+    )
+]
 
 TRIGTIME = 60
 gti = GTI(0.0, 100.0)

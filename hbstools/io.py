@@ -1,8 +1,8 @@
-from pathlib import Path
 from functools import cache
+from pathlib import Path
 
-from astropy.table import Table
 from astropy.io import fits  # type: ignore[import-untyped]
+from astropy.table import Table
 import pandas as pd
 from pandas.api.types import CategoricalDtype
 
@@ -28,12 +28,12 @@ def read_gti_header(gti_path: str | Path) -> fits.Header:
     return header
 
 
-def read_event_files(
-    data_path: str | Path
-) -> pd.DataFrame:
+def read_event_files(data_path: str | Path) -> pd.DataFrame:
     """Opens the data files and merges them"""
     data_df = Table.read(data_path, hdu=1, format="fits").to_pandas()
     category_quads_t = CategoricalDtype(categories=[0, 1, 2, 3], ordered=True)
-    return data_df.astype({
-        "QUADID": category_quads_t,
-    })
+    return data_df.astype(
+        {
+            "QUADID": category_quads_t,
+        }
+    )

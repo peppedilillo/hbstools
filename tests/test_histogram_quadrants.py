@@ -4,7 +4,9 @@ from hbstools.data import catalog
 from hbstools.data import histogram_quadrants
 from hbstools.data import stream
 
-inputs = [("data_100s_stronganomaly60s/out_lv1_cl.evt", "data_100s_stronganomaly60s/gti.fits")]
+inputs = [
+    ("data_100s_stronganomaly60s/out_lv1_cl.evt", "data_100s_stronganomaly60s/gti.fits")
+]
 
 
 class TestHistogramQuadrants(unittest.TestCase):

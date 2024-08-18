@@ -1,10 +1,10 @@
+from glob import glob
 import hashlib
 from math import log10
 from pathlib import Path
 from typing import Sequence
 from uuid import uuid4
 import warnings
-from glob import glob
 
 from astropy.io import fits
 import click
@@ -378,7 +378,9 @@ def write_library(events: list[Event], dataset: Dataset, dir_path: Path):
 
     index = {"uuid": uuid4().hex, "mappings": (fmap := {})}
     pad = int(log10(len(events))) + 1  # for filename padding
-    for n, (event, (_, gti_path)) in enumerate(map_event_to_files(events, dataset).items()):
+    for n, (event, (_, gti_path)) in enumerate(
+        map_event_to_files(events, dataset).items()
+    ):
         header = hbs.io.read_gti_header(gti_path)
         write_src(event, src_path := dir_path / f"event-src-{n:0{pad}}.fits", header)
         write_bkg(event, bkg_path := dir_path / f"event-bkg-{n:0{pad}}.fits", header)
