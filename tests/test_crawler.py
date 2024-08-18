@@ -26,7 +26,8 @@ outputs = [
     {
         (Path("crawler_test/d4/file1"), Path("crawler_test/d4/file2"), Path("crawler_test/d4/file3")),
         (Path("crawler_test/d2/d2_3/file1"), Path("crawler_test/d2/d2_3/file2"), Path("crawler_test/d2/d2_3/file3")),
-        (Path("crawler_test/d1/d1_1/d1_1_1/file1"), Path("crawler_test/d1/d1_1/d1_1_1/file2"), Path("crawler_test/d1/d1_1/d1_1_1/file3")),
+        (Path("crawler_test/d1/d1_1/d1_1_1/file1"), Path("crawler_test/d1/d1_1/d1_1_1/file2"), Path(
+            "crawler_test/d1/d1_1/d1_1_1/file3")),
     },
 ]
 

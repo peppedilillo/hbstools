@@ -3,19 +3,20 @@ import unittest
 from hbstools.data import catalog
 from hbstools.types import GTI
 
+
 input_paths = [
-    {
-        "data_300s_constant/data_300s_constant1",
-        "data_300s_constant/data_300s_constant2",
-        "data_300s_constant/data_300s_constant3",
-        "data_300s_constant/data_300s_constant4",
-        "data_300s_constant/data_300s_constant5",
-        "data_300s_constant/data_300s_constant6",
-        "data_300s_constant/data_300s_constant7",
-    },
-    {
-        "data_100s_stronganomaly60s",
-    },
+    [
+        ("data_300s_constant/data_300s_constant1/out_lv1_cl.evt", "data_300s_constant/data_300s_constant1/gti.fits"),
+        ("data_300s_constant/data_300s_constant2/out_lv1_cl.evt", "data_300s_constant/data_300s_constant2/gti.fits"),
+        ("data_300s_constant/data_300s_constant3/out_lv1_cl.evt", "data_300s_constant/data_300s_constant3/gti.fits"),
+        ("data_300s_constant/data_300s_constant4/out_lv1_cl.evt", "data_300s_constant/data_300s_constant4/gti.fits"),
+        ("data_300s_constant/data_300s_constant5/out_lv1_cl.evt", "data_300s_constant/data_300s_constant5/gti.fits"),
+        ("data_300s_constant/data_300s_constant6/out_lv1_cl.evt", "data_300s_constant/data_300s_constant6/gti.fits"),
+        ("data_300s_constant/data_300s_constant7/out_lv1_cl.evt", "data_300s_constant/data_300s_constant7/gti.fits"),
+    ],
+    [
+        ("data_100s_stronganomaly60s/out_lv1_cl.evt", "data_100s_stronganomaly60s/gti.fits", ),
+    ],
 ]
 
 output_gtis = [
@@ -38,15 +39,15 @@ output_gtis = [
 
 class TestDataset(unittest.TestCase):
     def test_file(self):
-        for paths in input_paths:
-            filenames = set([filename for _, filename in catalog(paths)])
-            self.assertTrue(all([fn in paths for fn in filenames]))
+        for inputs in input_paths:
+            filenames = set([filenames for filenames, _ in catalog(inputs)])
+            self.assertTrue(all([fn in inputs for fn in filenames]))
 
     def test_gtis(self):
         for paths, gtis in zip(input_paths, output_gtis):
             flattened_gtis = [gti for file_gtis in gtis for gti in file_gtis]
             output = catalog(paths)
-            expected = [gti for gti, _ in output]
+            expected = [gti for _, gti in output]
             self.assertTrue(all([r == o for r, o in zip(flattened_gtis, expected)]))
             self.assertTrue(len(expected) == len(flattened_gtis))
 

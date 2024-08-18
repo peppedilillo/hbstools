@@ -5,13 +5,13 @@ from hbstools.data import stream
 from hbstools.types import GTI
 
 inputs = {
-    "data_300s_constant/data_300s_constant1",
-    "data_300s_constant/data_300s_constant2",
-    "data_300s_constant/data_300s_constant3",
-    "data_300s_constant/data_300s_constant4",
-    "data_300s_constant/data_300s_constant5",
-    "data_300s_constant/data_300s_constant6",
-    "data_300s_constant/data_300s_constant7",
+    ("data_300s_constant/data_300s_constant1/out_lv1_cl.evt", "data_300s_constant/data_300s_constant1/gti.fits"),
+    ("data_300s_constant/data_300s_constant2/out_lv1_cl.evt", "data_300s_constant/data_300s_constant2/gti.fits"),
+    ("data_300s_constant/data_300s_constant3/out_lv1_cl.evt", "data_300s_constant/data_300s_constant3/gti.fits"),
+    ("data_300s_constant/data_300s_constant4/out_lv1_cl.evt", "data_300s_constant/data_300s_constant4/gti.fits"),
+    ("data_300s_constant/data_300s_constant5/out_lv1_cl.evt", "data_300s_constant/data_300s_constant5/gti.fits"),
+    ("data_300s_constant/data_300s_constant6/out_lv1_cl.evt", "data_300s_constant/data_300s_constant6/gti.fits"),
+    ("data_300s_constant/data_300s_constant7/out_lv1_cl.evt", "data_300s_constant/data_300s_constant7/gti.fits"),
 }
 
 # key = merging tolerance
@@ -42,7 +42,7 @@ class TestDataset(unittest.TestCase):
         self.assertTrue(len(catalog(inputs)) == 13)
 
     def test_file(self):
-        filenames = set([filename for _, filename in catalog(inputs)])
+        filenames = set([filenames for filenames, _ in catalog(inputs)])
         self.assertTrue(all([fn in inputs for fn in filenames]))
 
     def test_gtis(self):
