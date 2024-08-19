@@ -89,16 +89,18 @@ algorithm_params:
  # The algorithm we are going to use depends on the parameters you'll select, 
  # according to this table:
  # 
- # |               | Python PF+DES | Python BFT | C PF+SES | C BFT |
- # |---------------|---------------|------------|----------|-------|
- # | threshold_std |       ✓       |      ✓     |     ✓    |   ✓   |
- # | mu_min        |       ✓       |      ✓     |     ✓    |   ✓   |
- # | alpha         |       ✓       |      ✓     |     ✓    |   ✓   |
- # | beta          |       ✓       |      ✓     |          |       |
- # | m             |       ✓       |      ✓     |     ✓    |   ✓   |
- # | t_max         |       ✓       |      ✓     |          |       |
- # | sleep         |       ✓       |      ✓     |     ✓    |   ✓   |
- # | majority      |               |      ✓     |          |   ✓   |
+ #  +---------------+---------------+------------+----------+-------+
+ #  |  parameters   | Python PF+DES | Python BFT | C PF+SES | C BFT |
+ #  +---------------+---------------+------------+----------+-------+
+ #  | threshold_std |       v       |     v      |    v     |   v   |
+ #  |    mu_min     |       v       |     v      |    v     |   v   |
+ #  |     alpha     |       v       |     v      |    v     |   v   |
+ #  |     beta      |       v       |     v      |          |       |
+ #  |       m       |       v       |     v      |    v     |   v   |
+ #  |     t_max     |       v       |     v      |          |       |
+ #  |     sleep     |       v       |     v      |    v     |   v   |
+ #  |   majority    |               |     v      |          |   v   |
+ #  +---------------+---------------+------------+----------+-------+
  #
  # NOTE: a successful execution is not guaranteed if your parameters selection
  # does not meet one of the columns in the above table.
@@ -220,8 +222,8 @@ def crawler(
     patterns: Sequence[str],
     recursion_limit: int = 1,
 ) -> set[tuple[Path]]:
-    """Goes through directories looking for subdirs containing a specific set of files
-    matching unix-style patterns.
+    """Goes through directories looking for subdirs containing a specific set of files,
+    each matching unix-style patterns only once.
     If `recursion_limit=0`  we only check the present folder, ignoring its subdirectories.
     Returns a set (unordered) of tuples. Each tuple is composed of `n` path-objects,
     where `n` equals the number of patterns. Each path-object points to a matching file in
@@ -235,10 +237,10 @@ def crawler(
     def directory_contains(d: Path, ps) -> tuple:
         matches = {p: [d / f for f in glob(p, root_dir=d)] for p in ps}
         # if we do not get a full match we return without errors
-        if any([not matches[pattern] for pattern in ps]):
+        if any([not matches[p] for p in ps]):
             return tuple()
         # raise an error if we got an ambiguous match
-        if not all(len(ms) == 1 for ms in matches.values()):
+        if not all(len(matches[p]) == 1 for p in ps):
             raise click.FileError(
                 f"Directory {d} contains multiple files pattern matching against "
                 f"`{', '.join([p for p in ps if len(matches[p]) != 1])}`."
