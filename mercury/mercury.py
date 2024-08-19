@@ -269,10 +269,8 @@ def crawler(
 
 def unused_path(file: Path, num: int = 1, isdir: bool = False) -> Path:
     """Return an unused path with same stem prefix as `file` and incremental suffix.
-    if `num` is set to 1, tested alternatives are: `path.fits`, `path-1.fits`,
-    `path-2.fits` and so on.
-    if `num` is set to 0, tested alternatives are `path.fits`, `path-0.fits`,
-    `path-1.fits`..`"""
+    if `num` is set to 1, returns `path.fits`, `path-1.fits`, `path-2.fits` etc.
+    if `num` is set to 0, return `path.fits`, `path-0.fits`, `path-1.fits`..`"""
     if (not file.is_file() and not isdir) or (not file.is_dir() and isdir):
         return file
     parts = file.stem.split("-")
