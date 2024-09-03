@@ -31,42 +31,14 @@ def write_library(
     are given default names.
     :param index_fname: name of the index file
     """
-
-    def write_src(event: Event, filepath: Path, header: fits.Header | None = None):
-        """A helper for writing an event's source output file.
-        Primary HDU header is the HDU of the GTI where the event start time is."""
-        data = pd.DataFrame([event])[["start", "end"]].to_records(index=False)
-        _write_results_fits(
-            data,
-            filepath,
-            primary_header=header,
-            data_header=fits.Header(_compile_data_header(configuration).items()),
-        )
-
-    def write_bkg(e: Event, filepath: Path, header: fits.Header | None = None):
-        """A helper for writing an event's background output file.
-        Primary HDU header is the HDU of the GTI where the event start time is."""
-        data = pd.DataFrame(
-            {
-                "bkg_start": [e.bkg_pre_start, e.bkg_post_start],
-                "bkg_end": [e.bkg_post_start, e.bkg_post_end],
-            }
-        ).to_records(index=False)
-        _write_results_fits(
-            data,
-            filepath,
-            primary_header=header,
-            data_header=fits.Header(_compile_data_header(configuration).items()),
-        )
-
     index = {"uuid": uuid4().hex, "mappings": (fmap := {})}
     pad = int(log10(len(events))) + 1  # for filename padding
     for n, (event, (_, gti_path)) in enumerate(
         map_event_to_files(events, dataset).items()
     ):
         header = hbs.io.read_gti_header(gti_path)
-        write_src(event, src_path := dir_path / f"event-src-{n:0{pad}}.fits", header)
-        write_bkg(event, bkg_path := dir_path / f"event-bkg-{n:0{pad}}.fits", header)
+        _write_src(event, src_path := dir_path / f"event-src-{n:0{pad}}.fits", configuration, header)
+        _write_bkg(event, bkg_path := dir_path / f"event-bkg-{n:0{pad}}.fits", configuration, header)
         fmap[src_path.name] = {"root": str(gti_path.parent.absolute()), "type": "src"}
         fmap[bkg_path.name] = {"root": str(gti_path.parent.absolute()), "type": "bkg"}
 
@@ -107,35 +79,64 @@ def _write_results_fits(
     fits.HDUList([primary, data]).writeto(filepath)
 
 
-def _flat(d: dict):
+def _write_src(event: Event, filepath: Path, configuration: dict, header: fits.Header | None = None):
+    """A helper for writing an event's source output file.
+    Primary HDU header is the HDU of the GTI where the event start time is."""
+    data = pd.DataFrame([event])[["start", "end"]].to_records(index=False)
+    _write_results_fits(
+        data,
+        filepath,
+        primary_header=header,
+        data_header=fits.Header(_compile_data_header(configuration).items()),
+    )
+
+
+def _write_bkg(e: Event, filepath: Path, configuration: dict, header: fits.Header | None = None):
+    """A helper for writing an event's background output file.
+    Primary HDU header is the HDU of the GTI where the event start time is."""
+    data = pd.DataFrame(
+        {
+            "bkg_start": [e.bkg_pre_start, e.bkg_post_start],
+            "bkg_end": [e.bkg_post_start, e.bkg_post_end],
+        }
+    ).to_records(index=False)
+    _write_results_fits(
+        data,
+        filepath,
+        primary_header=header,
+        data_header=fits.Header(_compile_data_header(configuration).items()),
+    )
+
+
+def _flat(d: dict) -> dict:
     """Flattens a dictionary recursively.
     Example:
     In  = {"a": 1, "b": 2, "c": {"d": 3, "e": 4}}
     Out = {"a": 1, "b": 2, "d": 3, "e": 4}
     """
-    def helper(d, acc):
-        if not d:
+    def helper(s, acc):
+        if not s:
             return acc
-        k, v = d.popitem()
+        k, v = s.popitem()
         if not isinstance(v, dict):
-            return helper(d, acc | {k: v})
+            return helper(s, acc | {k: v})
         else:
-            return helper(d, helper(v, {}))
+            return helper(s, helper(v, {}))
 
     return helper(d, {})
 
 
-def _short(d: dict):
+def _short(d: dict) -> dict:
     """Avoids the creation of an un-standard header card"""
     return {k[:8]: v for k, v in d.items()}
 
 
-def _vstring(d: dict):
+def _vstring(d: dict) -> dict:
     """Writing strings we can ignore iterable values in configurations."""
     return {k: str(v) for k, v in d.items()}
 
 
-def _tag(d: dict):
+def _tag(d: dict) -> dict:
     """Adds a number of mercury-specific tags"""
     # TODO: add a version tag.
     return d | {
@@ -144,5 +145,7 @@ def _tag(d: dict):
     }
 
 
-def _compile_data_header(configuration: dict):
+def _compile_data_header(configuration: dict) -> dict:
+    """Starting from a configuration returns a dictionary which can be used
+    as a FITS header."""
     return _vstring(_short(_tag(_flat(configuration))))
