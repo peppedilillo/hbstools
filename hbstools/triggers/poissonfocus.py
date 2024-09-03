@@ -48,12 +48,12 @@ class PoissonFocus(TriggerAlgorithm):
 
     def __init__(
         self,
-        threshold_std: float,
+        thr_std: float,
         mu_min: float = 1.0,
     ):
         """
         Args:
-            threshold_std: Threshold value in standard deviations.
+            thr_std: Threshold value in standard deviations.
             Must be a positive number.
             mu_min: Kills old changepoints and keep amortized memory costant,
             at cost of a loss of sensitivity.
@@ -62,7 +62,8 @@ class PoissonFocus(TriggerAlgorithm):
         Optional arguments are implied off by default.
         """
         self.ab_crit = 1 if mu_min == 1.0 else (mu_min - 1.0) / log(mu_min)
-        self.threshold_llr = threshold_std**2 / 2
+        # threshold_loglikelihood
+        self.thr_llr = thr_std ** 2 / 2
         self.global_max = 0.0
         self.time_offset = 0
         self.curve_list = []
@@ -90,7 +91,7 @@ class PoissonFocus(TriggerAlgorithm):
             if b_t <= 0:
                 raise ValueError("background rate must be greater than zero.")
             self.update(x_t, b_t)
-            if self.global_max > self.threshold_llr:
+            if self.global_max > self.thr_llr:
                 return sqrt(2 * self.global_max), -self.time_offset + t + 1, t
         return 0.0, t + 1, t
 
@@ -118,8 +119,8 @@ class PoissonFocus(TriggerAlgorithm):
         """Poisson-FOCuS maximization step."""
         m = acc.m - p.m
         i = len(self.curve_list)
-        while m + p.m >= self.threshold_llr:
-            if m >= self.threshold_llr:
+        while m + p.m >= self.thr_llr:
+            if m >= self.thr_llr:
                 self.global_max = m
                 self.time_offset = acc.t - p.t
                 break

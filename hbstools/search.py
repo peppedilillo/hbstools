@@ -103,7 +103,7 @@ def search(
     search_run = search_set(
         configuration["binning"],
         configuration["skip"],
-        configuration["energy_lims"],
+        configuration["en_lims"],
         configuration["algorithm_params"],
         _log,
     )

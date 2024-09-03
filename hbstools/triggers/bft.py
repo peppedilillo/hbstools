@@ -8,7 +8,6 @@ from typing import Callable
 import numpy.typing as npt
 
 from hbstools.triggers import TriggerAlgorithm
-from hbstools.triggers.poissonfocus import PoissonFocus
 from hbstools.triggers.poissonfocusdes import PoissonFocusDes
 from hbstools.types import Change
 from hbstools.types import Changepoint
@@ -41,7 +40,7 @@ class Bft(TriggerAlgorithm):
 
     def __init__(
         self,
-        threshold_std: float,
+        thr_std: float,
         alpha: float,
         beta: float,
         m: int,
@@ -54,7 +53,7 @@ class Bft(TriggerAlgorithm):
     ):
         """
         Args:
-            threshold_std:  In standard deviation units.
+            thr_std:  In standard deviation units.
             Must be greater than 0.
             alpha: DES alpha (value) parameter.
             Must be greater than 0.
@@ -81,7 +80,7 @@ class Bft(TriggerAlgorithm):
         self.quadrantmask = [1 for i in range(self.DETECTOR_NUMBER)]
         self.fs = [
             PoissonFocusDes(
-                threshold_std=threshold_std,
+                thr_std=thr_std,
                 alpha=alpha,
                 beta=beta,
                 m=m,

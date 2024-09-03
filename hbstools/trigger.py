@@ -38,7 +38,7 @@ def trigger_match(
     giving precedence to algorithms with C implementations."""
     match algorithm_params:
         case {
-            "threshold_std": _,
+            "thr_std": _,
             "alpha": _,
             "beta": _,
             "m": _,
@@ -49,7 +49,7 @@ def trigger_match(
         }:
             return bft.Bft
         case {
-            "threshold_std": _,
+            "thr_std": _,
             "alpha": _,
             "beta": _,
             "m": _,
@@ -59,7 +59,7 @@ def trigger_match(
         }:
             return pfd.PoissonFocusDes
         case {
-            "threshold_std": _,
+            "thr_std": _,
             "alpha": _,
             "m": _,
             "sleep": _,
@@ -68,7 +68,7 @@ def trigger_match(
         }:
             return bftc.BftCWrapper
         case {
-            "threshold_std": _,
+            "thr_std": _,
             "alpha": _,
             "m": _,
             "sleep": _,

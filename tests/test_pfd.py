@@ -19,10 +19,10 @@ gti = GTI(0.0, 100.0)
 
 configuration = {
     "binning": 0.1,
-    "energy_lims": (20, 300),
+    "en_lims": (20, 300),
     "skip": 100,
     "algorithm_params": {
-        "threshold_std": 5.0,
+        "thr_std": 5.0,
         "mu_min": 1.1,
         "alpha": 0.005,
         "beta": 0.001,

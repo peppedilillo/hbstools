@@ -24,7 +24,7 @@ class PoissonFocusDes(TriggerAlgorithm):
 
     def __init__(
         self,
-        threshold_std: float,
+        thr_std: float,
         alpha: float,
         beta: float,
         m: int,
@@ -39,7 +39,7 @@ class PoissonFocusDes(TriggerAlgorithm):
         through double exponential smoothing.
 
         Args:
-            threshold_std:  In standard deviation units.
+            thr_std:  In standard deviation units.
             Must be greater than 0.
             alpha: DES alpha (value) parameter.
             Must be greater than 0.
@@ -60,11 +60,7 @@ class PoissonFocusDes(TriggerAlgorithm):
 
         Optional arguments are implied off by default.
         """
-        self.focus_params = {
-            "mu_min": mu_min,
-            "threshold_std": threshold_std,
-        }
-        self.focus = PoissonFocus(**self.focus_params)
+        self.focus = PoissonFocus(thr_std, mu_min)
         self.buffer: Deque = deque([], maxlen=m)
         self.s_t = None
         self.b_t = None

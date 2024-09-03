@@ -1,29 +1,22 @@
 from glob import glob
 import hashlib
-from math import log10
 from pathlib import Path
 from typing import Sequence
-from uuid import uuid4
 import warnings
 
-from astropy.io import fits
 import click
-import pandas as pd
 from rich.console import Console
 from schema import And  # type: ignore[import-untyped]
 from schema import Optional  # type: ignore[import-untyped]
 from schema import Schema  # type: ignore[import-untyped]
 from schema import SchemaError  # type: ignore[import-untyped]
 from schema import Use  # type: ignore[import-untyped]
-import yaml
 from yaml import dump as write_yaml
 from yaml import safe_load as read_yaml
 from yaml import YAMLError
 
 import hbstools as hbs
-from hbstools.data import map_event_to_files
-from hbstools.types import Dataset
-from hbstools.types import Event
+from mercury.io import write_library, write_catalog
 
 LOGO = """
                         
@@ -44,6 +37,10 @@ m888N= 888> *888" 888&
 
 """
 
+DEFAULT_CATALOG_NAME = "mercury-results.fits"
+DEFAULT_LIBRARY_NAME = "mercury-results/"
+INDEX_FILENAME = ".mercury-index.yaml"
+
 
 def init_console(with_logo) -> Console:
     """initializes console, optionally with a logo"""
@@ -59,6 +56,8 @@ def init_console(with_logo) -> Console:
     return console
 
 
+# try to keep keywords under 8 characters, else they will appear
+# truncated in result fits metadata.
 DEFAULT_CONFIG = """
 # The `binning` keyword sets the light curve bin step duration.
 # It is expressed in units of seconds. 
@@ -66,11 +65,11 @@ DEFAULT_CONFIG = """
 binning: 0.1
 
 # Data are filtered over one customizable energy band.
-# The `energy_lims` keyword sets the low and high energy limit for this band.
+# The `en_lims` keyword sets the low and high energy limit for this band.
 # Energy limits are expressed in units of keV.
 # The first value (the low energy limit) must be non negative and smaller 
 # than the second value (the high energy limit).
-energy_lims:
+en_lims:
 - 20.0 # low energy limit
 - 300.0 # high energy limit
 
@@ -110,7 +109,7 @@ algorithm_params:
  # The higher the threshold, the less false positive but the more false negative.
  # The threshold is expressed in units of standard deviations.
  # Must be greater than 0.
- threshold_std: 4.5
+ thr_std: 4.5
 
  # The `mu_min` key set a focus parameter for killing old changepoints, which 
  # most likely will never result in a trigger. 
@@ -166,7 +165,7 @@ config_schema = Schema(
             lambda b: b > 0,
             error="`binning` must be greater than zero.",
         ),
-        "energy_lims": And(
+        "en_lims": And(
             Use(tuple[float, float]),
             lambda lim: 0 <= lim[0] < lim[1],
         ),
@@ -175,7 +174,7 @@ config_schema = Schema(
             error="`skip` must be a non-negative integer",
         ),
         "algorithm_params": {
-            "threshold_std": And(
+            "thr_std": And(
                 Use(float),
                 lambda t: t > 0,
                 error="`threshold` must be positive.",
@@ -329,66 +328,12 @@ def search_validate_config(
     try:
         algorithm_class = hbs.trigger.trigger_match(algorithm_params)
     except ValueError:
-        raise click.BadParameter("Cannot find an algorithm matching the configuration.")
+        raise click.BadParameter("Wrong configuration, or no algorithm to match it.")
 
     # stores the algorithm's name and the configuration path to display them later.
     ctx.obj["search_algoname"] = str(algorithm_class(**algorithm_params))
     ctx.obj["search_config"] = None if config_path is None else config_path
     return validated_config
-
-
-DEFAULT_CATALOG_NAME = "mercury-results.fits"
-
-
-def write_catalog(events: list[Event], filepath: Path | str):
-    """Save an event list to a single fits file"""
-    content = pd.DataFrame(events).to_records(index=False)
-    fits.writeto(filename=filepath, data=content, overwrite=True)
-
-
-DEFAULT_LIBRARY_NAME = "mercury-results/"
-INDEX_FILENAME = ".mercury-index.yaml"
-
-
-def write_library(events: list[Event], dataset: Dataset, dir_path: Path):
-    """
-    Writes events to multiple fits files and store an index of them which
-    can be used to merge the results to the dataset.
-
-    :param events:
-    :param dataset:
-    :param dir_path: shall point to a directory. both the events and the index
-    are given default names.
-    """
-
-    def write_src(event: Event, filepath: Path, header: fits.Header | None = None):
-        """A helper for writing an event's source output file"""
-        content = pd.DataFrame([event])[["start", "end"]].to_records(index=False)
-        fits.writeto(filename=filepath, data=content, header=header)
-
-    def write_bkg(e: Event, filepath: Path, header: fits.Header | None = None):
-        """A helper for writing an event's background output file"""
-        content = pd.DataFrame(
-            {
-                "bkg_start": [e.bkg_pre_start, e.bkg_post_start],
-                "bkg_end": [e.bkg_post_start, e.bkg_post_end],
-            }
-        ).to_records(index=False)
-        fits.writeto(filename=filepath, data=content, header=header)
-
-    index = {"uuid": uuid4().hex, "mappings": (fmap := {})}
-    pad = int(log10(len(events))) + 1  # for filename padding
-    for n, (event, (_, gti_path)) in enumerate(
-        map_event_to_files(events, dataset).items()
-    ):
-        header = hbs.io.read_gti_header(gti_path)
-        write_src(event, src_path := dir_path / f"event-src-{n:0{pad}}.fits", header)
-        write_bkg(event, bkg_path := dir_path / f"event-bkg-{n:0{pad}}.fits", header)
-        fmap[src_path.name] = {"root": str(gti_path.parent.absolute()), "type": "src"}
-        fmap[bkg_path.name] = {"root": str(gti_path.parent.absolute()), "type": "bkg"}
-
-    with open(dir_path / INDEX_FILENAME, "w") as f:
-        yaml.dump(index, f)
 
 
 @cli.command()
@@ -471,12 +416,12 @@ def search(
     if mode == "catalog":
         filepath = unused_path(output if not output.is_dir() else output / DEFAULT_CATALOG_NAME)
         console.log(f"Writing to {fmt_filename(filepath)}.")
-        write_catalog(events, filepath)
+        write_catalog(events, filepath, configuration)
     elif mode == "library":
         dirpath = unused_path(output / DEFAULT_LIBRARY_NAME if output == Path(".") else output, isdir=True)
         console.log(f"Writing to {fmt_filename(dirpath)}.")
         dirpath.mkdir()
-        write_library(events, dataset, dirpath)
+        write_library(events, dataset, configuration, dirpath, INDEX_FILENAME)
 
     console.print("\nDone.\n")
     # fmt: on

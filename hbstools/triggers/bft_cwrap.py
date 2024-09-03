@@ -52,7 +52,7 @@ class BftCWrapper(TriggerAlgorithm):
 
     def __init__(
         self,
-        threshold_std: float,
+        thr_std: float,
         alpha: float,
         m: int,
         sleep: int,
@@ -61,7 +61,7 @@ class BftCWrapper(TriggerAlgorithm):
     ):
         """
         Args:
-            threshold_std:  In standard deviation units.
+            thr_std:  In standard deviation units.
             Must be greater than 0.
             alpha: DES alpha (value) parameter.
             Must be greater than 0.
@@ -76,8 +76,8 @@ class BftCWrapper(TriggerAlgorithm):
 
         Optional arguments are set off by default.
         """
-        self.check_init_parameters(threshold_std, mu_min, alpha, m, sleep, majority)
-        self.threshold_std = threshold_std
+        self.check_init_parameters(thr_std, mu_min, alpha, m, sleep, majority)
+        self.thr_std = thr_std
         self.mu_min = mu_min
         self.alpha = alpha
         self.m = m
@@ -96,7 +96,7 @@ class BftCWrapper(TriggerAlgorithm):
             # TODO: avoid this fucking casting
             xss.astype(ctypes.c_int64),
             xs_length,
-            self.threshold_std,
+            self.thr_std,
             self.mu_min,
             self.alpha,
             self.m,
@@ -117,7 +117,7 @@ class BftCWrapper(TriggerAlgorithm):
 
     @staticmethod
     def check_init_parameters(
-        threshold_std: float,
+        thr_std: float,
         mu_min: float,
         alpha: float,
         m: int,
@@ -127,7 +127,7 @@ class BftCWrapper(TriggerAlgorithm):
         """Checks validity of initialization arguments."""
         check = BftCWrapper.bind_bft_check_init_parameters()
         error_code = check(
-            threshold_std,
+            thr_std,
             mu_min,
             alpha,
             m,

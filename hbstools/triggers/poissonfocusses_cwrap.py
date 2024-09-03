@@ -45,7 +45,7 @@ class PoissonFocusSesCwrapper(TriggerAlgorithm):
 
     def __init__(
         self,
-        threshold_std: float,
+        thr_std: float,
         alpha: float,
         m: int,
         sleep: int,
@@ -53,7 +53,7 @@ class PoissonFocusSesCwrapper(TriggerAlgorithm):
     ):
         """
         Args:
-            threshold_std:  In standard deviation units.
+            thr_std:  In standard deviation units.
             Must be greater than 0.
             alpha: DES alpha (value) parameter.
             Must be greater than 0.
@@ -66,8 +66,8 @@ class PoissonFocusSesCwrapper(TriggerAlgorithm):
 
         Optional arguments are implied off by default.
         """
-        self.check_init_parameters(threshold_std, mu_min, alpha, m, sleep)
-        self.threshold_std = threshold_std
+        self.check_init_parameters(thr_std, mu_min, alpha, m, sleep)
+        self.thr_std = thr_std
         self.mu_min = mu_min
         self.alpha = alpha
         self.m = m
@@ -86,7 +86,7 @@ class PoissonFocusSesCwrapper(TriggerAlgorithm):
             # TODO: aboid this fucking casting
             xs.astype(ctypes.c_int64),
             xs_length,
-            self.threshold_std,
+            self.thr_std,
             self.mu_min,
             self.alpha,
             self.m,
@@ -101,7 +101,7 @@ class PoissonFocusSesCwrapper(TriggerAlgorithm):
 
     @staticmethod
     def check_init_parameters(
-        threshold_std: float,
+        thr_std: float,
         mu_min: float,
         alpha: float,
         m: int,
@@ -110,7 +110,7 @@ class PoissonFocusSesCwrapper(TriggerAlgorithm):
         """Checks validity of initialization arguments."""
         check = PoissonFocusSesCwrapper.bind_pfs_check_init_parameters()
         error_code = check(
-            threshold_std,
+            thr_std,
             mu_min,
             alpha,
             m,
