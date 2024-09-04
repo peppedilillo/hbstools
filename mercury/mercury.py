@@ -16,7 +16,8 @@ from yaml import safe_load as read_yaml
 from yaml import YAMLError
 
 import hbstools as hbs
-from mercury.io import write_library, write_catalog
+from mercury.io import write_catalog
+from mercury.io import write_library
 
 LOGO = """
                         
@@ -338,13 +339,14 @@ def search_validate_config(
 
 DEFAULT_RECLIM = -1
 
+
 def search_validate_reclim(ctx: click.Context, param: click.Option, reclim: int) -> int:
     if reclim != DEFAULT_RECLIM and reclim < 0:
         raise click.BadParameter("Flag `reclim` should be either non-negative or -1.")
     return reclim
 
 
-@cli.command(context_settings={'show_default': True})
+@cli.command(context_settings={"show_default": True})
 @click.argument(
     "input_dirs",
     type=click.Path(exists=True, file_okay=False, path_type=Path),
@@ -367,7 +369,7 @@ def search_validate_reclim(ctx: click.Context, param: click.Option, reclim: int)
     callback=search_validate_config,
     help="Path to a YAML configuration file. "
     "If not provided, values from a default configuration are used. "
-    "You can get a copy of the default configuration using `mercury drop`."
+    "You can get a copy of the default configuration using `mercury drop`.",
 )
 @click.option(
     "--evtpattern",

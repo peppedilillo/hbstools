@@ -63,7 +63,7 @@ class PoissonFocus(TriggerAlgorithm):
         """
         self.ab_crit = 1 if mu_min == 1.0 else (mu_min - 1.0) / log(mu_min)
         # threshold_loglikelihood
-        self.thr_llr = thr_std ** 2 / 2
+        self.thr_llr = thr_std**2 / 2
         self.global_max = 0.0
         self.time_offset = 0
         self.curve_list = []

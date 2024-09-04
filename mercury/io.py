@@ -3,22 +3,23 @@ from math import log10
 from pathlib import Path
 from uuid import uuid4
 
+from astropy.io import fits
 import numpy as np
 import pandas as pd
 import yaml
-from astropy.io import fits
 
 import hbstools as hbs
 from hbstools.data import map_event_to_files
-from hbstools.types import Event, Dataset
+from hbstools.types import Dataset
+from hbstools.types import Event
 
 
 def write_library(
-        events: list[Event],
-        dataset: Dataset,
-        configuration: dict,
-        dir_path: Path,
-        index_fname: str,
+    events: list[Event],
+    dataset: Dataset,
+    configuration: dict,
+    dir_path: Path,
+    index_fname: str,
 ):
     """
     Writes events to multiple fits files and store an index of them which
@@ -37,8 +38,18 @@ def write_library(
         map_event_to_files(events, dataset).items()
     ):
         gti_content = hbs.io.read_gti_file(gti_path)
-        _write_src(event, src_path := dir_path / f"event-src-{n:0{pad}}.fits", configuration, gti_content)
-        _write_bkg(event, bkg_path := dir_path / f"event-bkg-{n:0{pad}}.fits", configuration, gti_content)
+        _write_src(
+            event,
+            src_path := dir_path / f"event-src-{n:0{pad}}.fits",
+            configuration,
+            gti_content,
+        )
+        _write_bkg(
+            event,
+            bkg_path := dir_path / f"event-bkg-{n:0{pad}}.fits",
+            configuration,
+            gti_content,
+        )
         fmap[src_path.name] = {"root": str(gti_path.parent.absolute()), "type": "src"}
         fmap[bkg_path.name] = {"root": str(gti_path.parent.absolute()), "type": "bkg"}
 
@@ -47,17 +58,21 @@ def write_library(
 
 
 def _write_src(
-        event: Event,
-        filepath: Path,
-        configuration: dict,
-        gti: tuple[np.recarray, fits.Header] | None = None
+    event: Event,
+    filepath: Path,
+    configuration: dict,
+    gti: tuple[np.recarray, fits.Header] | None = None,
 ):
     """A helper for writing an event's source output file.
     Primary HDU header is the HDU of the GTI where the event start time is."""
     data = pd.DataFrame(
         {
-            "START": [event.start,],
-            "STOP": [event.stop, ],
+            "START": [
+                event.start,
+            ],
+            "STOP": [
+                event.stop,
+            ],
         }
     ).to_records(index=False)
     primary = fits.PrimaryHDU(
@@ -78,10 +93,10 @@ def _write_src(
 
 
 def _write_bkg(
-        event: Event,
-        filepath: Path,
-        configuration: dict,
-        gti: tuple[np.recarray, fits.Header] | None = None
+    event: Event,
+    filepath: Path,
+    configuration: dict,
+    gti: tuple[np.recarray, fits.Header] | None = None,
 ):
     """A helper for writing an event's background output file.
     Primary HDU header is the HDU of the GTI where the event start time is."""
@@ -109,9 +124,9 @@ def _write_bkg(
 
 
 def write_catalog(
-        events: list[Event],
-        filepath: Path | str,
-        configuration: dict,
+    events: list[Event],
+    filepath: Path | str,
+    configuration: dict,
 ):
     """Write results to fits under catalog mode."""
     data = pd.DataFrame(
@@ -141,6 +156,7 @@ def _flat(d: dict) -> dict:
     In  = {"a": 1, "b": 2, "c": {"d": 3, "e": 4}}
     Out = {"a": 1, "b": 2, "d": 3, "e": 4}
     """
+
     def helper(s, acc):
         if not s:
             return acc

@@ -1,9 +1,9 @@
 from functools import cache
 from pathlib import Path
 
-import numpy as np
 from astropy.io import fits  # type: ignore[import-untyped]
 from astropy.table import Table
+import numpy as np
 import pandas as pd
 from pandas.api.types import CategoricalDtype
 
