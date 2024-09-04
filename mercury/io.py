@@ -67,12 +67,8 @@ def _write_src(
     Primary HDU header is the HDU of the GTI where the event start time is."""
     data = pd.DataFrame(
         {
-            "START": [
-                event.start,
-            ],
-            "STOP": [
-                event.stop,
-            ],
+            "START": [event.start],
+            "STOP": [event.stop],
         }
     ).to_records(index=False)
     primary = fits.PrimaryHDU(
