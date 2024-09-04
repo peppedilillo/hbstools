@@ -57,7 +57,7 @@ def _write_src(
     data = pd.DataFrame(
         {
             "START": [event.start,],
-            "STOP": [event.end,],
+            "STOP": [event.stop, ],
         }
     ).to_records(index=False)
     primary = fits.PrimaryHDU(
@@ -88,7 +88,7 @@ def _write_bkg(
     data = pd.DataFrame(
         {
             "BKG_START": [event.bkg_pre_start, event.bkg_post_start],
-            "BKG_STOP": [event.bkg_post_start, event.bkg_post_end],
+            "BKG_STOP": [event.bkg_post_start, event.bkg_post_stop],
         }
     ).to_records(index=False)
     primary = fits.PrimaryHDU(
@@ -117,11 +117,11 @@ def write_catalog(
     data = pd.DataFrame(
         {
             "BKG_PRE_START": [e.bkg_pre_start for e in events],
-            "BKG_PRE_STOP": [e.bkg_pre_end for e in events],
+            "BKG_PRE_STOP": [e.bkg_pre_stop for e in events],
             "START": [e.start for e in events],
-            "STOP": [e.end for e in events],
+            "STOP": [e.stop for e in events],
             "BKG_POST_START": [e.bkg_post_start for e in events],
-            "BKG_POST_STOP": [e.bkg_post_end for e in events],
+            "BKG_POST_STOP": [e.bkg_post_stop for e in events],
         }
     ).to_records(index=False)
     primary = fits.PrimaryHDU(

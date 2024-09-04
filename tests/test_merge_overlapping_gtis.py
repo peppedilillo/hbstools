@@ -38,18 +38,18 @@ def merge_overlapping_gtis(gtis: list[GTI], tolerance: float = 1.0) -> list[tupl
 
     def overlap(x: GTI, y: GTI, abs_tol: float):
         """`x` overlaps `y` if `x` starts before or at the end of `y`"""
-        assert x.start < y.end
-        return isclose(x.end, y.start, abs_tol=abs_tol) or (y.start < x.end)
+        assert x.start < y.stop
+        return isclose(x.stop, y.start, abs_tol=abs_tol) or (y.start < x.stop)
 
     def f(xs: list[GTI]):
         if len(xs) == 2:
             first, second = xs
             if overlap(first, second, tolerance):
-                return [GTI(first.start, second.end)]
+                return [GTI(first.start, second.stop)]
         if len(xs) > 2:
             first, second, *cdr = xs
             if overlap(first, second, tolerance):
-                return f([GTI(first.start, second.end)] + cdr)
+                return f([GTI(first.start, second.stop)] + cdr)
             else:
                 return [first] + f([second, *cdr])
         return xs

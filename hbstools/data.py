@@ -27,8 +27,8 @@ def catalog(data_paths: Iterable[tuple[Path]]) -> Dataset:
 
 def _overlap(x: GTI, y: GTI, abs_tol: float) -> bool:
     """`x` overlaps `y` if `x` starts before or at the end of `y`"""
-    assert x.start < y.end
-    return isclose(x.end, y.start, abs_tol=abs_tol) or (y.start < x.end)
+    assert x.start < y.stop
+    return isclose(x.stop, y.start, abs_tol=abs_tol) or (y.start < x.stop)
 
 
 def _between(df, start_time: MET, end_time: MET) -> pd.DataFrame:
@@ -68,8 +68,8 @@ def stream(
             pdf = _between(df, *gti)
             pgti = gti
         else:
-            pdf = pd.concat((pdf, _between(df, max(pgti.end, gti.start), gti.end)))
-            pgti = GTI(pgti.start, gti.end)
+            pdf = pd.concat((pdf, _between(df, max(pgti.stop, gti.start), gti.stop)))
+            pgti = GTI(pgti.start, gti.stop)
         pfp = fp
     yield pdf, pgti
     return

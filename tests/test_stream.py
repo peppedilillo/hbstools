@@ -73,7 +73,7 @@ class TestDataset(unittest.TestCase):
             datastream = stream(dataset, abs_tol=abs_tol)
             for i, (df, gti) in enumerate(datastream):
                 self.assertTrue(expected_merged_gti[i] == gti)
-                self.assertTrue(df["TIME"].max() < gti.end)
+                self.assertTrue(df["TIME"].max() < gti.stop)
                 self.assertTrue(df["TIME"].min() >= gti.start)
             self.assertTrue(len(expected_merged_gti) == i + 1)
 

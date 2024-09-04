@@ -48,7 +48,7 @@ def search_log(write: Callable):
 
         def wrapper(data: pd.DataFrame, gti: GTI) -> list[ChangepointMET]:
             """The troy horse."""
-            write(f"[dim]On GTI {gti.start:.0f}, {gti.end:.0f}..")
+            write(f"[dim]On GTI {gti.start:.0f}, {gti.stop:.0f}..")
             try:
                 rs = f(data, gti)
             except ValueError:

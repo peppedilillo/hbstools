@@ -13,7 +13,7 @@ class GTI(NamedTuple):
     """A record for time intervals"""
 
     start: MET
-    end: MET
+    stop: MET
 
 
 # Dataset are nothing special really, they are lists of tuples built like this:
@@ -30,8 +30,8 @@ class Event(NamedTuple):
     """A record for transient events"""
 
     bkg_pre_start: MET
-    bkg_pre_end: MET
+    bkg_pre_stop: MET
     start: MET
-    end: MET
+    stop: MET
     bkg_post_start: MET
-    bkg_post_end: MET
+    bkg_post_stop: MET

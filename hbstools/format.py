@@ -78,8 +78,8 @@ def compute_bkg_post(
 ) -> tuple[MET, MET]:
     """Times from changepoint of an interval starting after skip steps from triggertime,
     with duration binning / alpha."""
-    if trigtime + t + delta > gti.end:
-        end = gti.end
+    if trigtime + t + delta > gti.stop:
+        end = gti.stop
         start = max(end - delta, trigtime)
     else:
         start = trigtime + t
