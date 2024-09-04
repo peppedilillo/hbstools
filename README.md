@@ -115,8 +115,18 @@ A basic usage involves getting into the folder containing the data you want to a
 
 ```mercury search .```
 
+The program will search directories for one data file and one gti file. 
 By default, only the input directory and its subdirectories are searched for data, but you can search deeper using the
 `--reclim` option of `mercury search`.
+
+Alternatively, a list of input directory can be passed as a variadic argument. For example:
+
+```mercury search dir1 dir2 --reclim 0```
+
+will search the directories `dir1` and `dir2`, ignoring their subdirectories.
+One can use `cat` to search directories listed in a file `input_dirs.txt`:
+
+```mercury search `cat input_dirs.txt` --reclim 0```
 
 ### Configuration files
 Mercury requires a configuration to work. Even when you run  `mercury search .` a default configuration is loaded.
@@ -131,8 +141,14 @@ To run with a custom configuration use the `-c` option flag, e.g. `mercury searc
 By default, results are saved in the input directory in FITS format.
 Using `mercury search . -o myresults-filename.fits` you will change the output file to `myresults-filename.fits`.
 
+There is an alternative output mode which can be selected passing the `--mode library` flag to `mercury search`.
+In library mode, mercury will create a directory containing individual files for transients.
+These files can be copied into the dataset using the `mercury merge`.
+The a merge can be undone, using the `mercury clean` command.
+
 > ❗ **To get help with mercury run `mercury --help`.**
 > To get help on a particular command, such as `search`, you call `mercury search --help`.
+
 
 ## Demo dataset
 We have uploaded a demo dataset [online](https://drive.google.com/file/d/1kC473-QQsLWrClxKRHT8JJCIJr_KO_4_/view?usp=sharing).
