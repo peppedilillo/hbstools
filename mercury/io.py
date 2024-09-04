@@ -36,14 +36,76 @@ def write_library(
     for n, (event, (_, gti_path)) in enumerate(
         map_event_to_files(events, dataset).items()
     ):
-        header = hbs.io.read_gti_header(gti_path)
-        _write_src(event, src_path := dir_path / f"event-src-{n:0{pad}}.fits", configuration, header)
-        _write_bkg(event, bkg_path := dir_path / f"event-bkg-{n:0{pad}}.fits", configuration, header)
+        gti_content = hbs.io.read_gti_file(gti_path)
+        _write_src(event, src_path := dir_path / f"event-src-{n:0{pad}}.fits", configuration, gti_content)
+        _write_bkg(event, bkg_path := dir_path / f"event-bkg-{n:0{pad}}.fits", configuration, gti_content)
         fmap[src_path.name] = {"root": str(gti_path.parent.absolute()), "type": "src"}
         fmap[bkg_path.name] = {"root": str(gti_path.parent.absolute()), "type": "bkg"}
 
     with open(dir_path / index_fname, "w") as f:
         yaml.dump(index, f)
+
+
+def _write_src(
+        event: Event,
+        filepath: Path,
+        configuration: dict,
+        gti: tuple[np.recarray, fits.Header] | None = None
+):
+    """A helper for writing an event's source output file.
+    Primary HDU header is the HDU of the GTI where the event start time is."""
+    data = pd.DataFrame(
+        {
+            "START": [event.start,],
+            "STOP": [event.end,],
+        }
+    ).to_records(index=False)
+    primary = fits.PrimaryHDU(
+        header=fits.Header(_tag({}).items()),
+    )
+    gti_data, gti_header = gti
+    gti = fits.BinTableHDU.from_columns(
+        gti_data,
+        header=gti_header,
+        name="STDGTI",
+    )
+    data = fits.BinTableHDU.from_columns(
+        data,
+        header=fits.Header(_compile_data_header(configuration).items()),
+        name="TRIGGERS",
+    )
+    fits.HDUList([primary, gti, data]).writeto(filepath)
+
+
+def _write_bkg(
+        event: Event,
+        filepath: Path,
+        configuration: dict,
+        gti: tuple[np.recarray, fits.Header] | None = None
+):
+    """A helper for writing an event's background output file.
+    Primary HDU header is the HDU of the GTI where the event start time is."""
+    data = pd.DataFrame(
+        {
+            "BKG_START": [event.bkg_pre_start, event.bkg_post_start],
+            "BKG_STOP": [event.bkg_post_start, event.bkg_post_end],
+        }
+    ).to_records(index=False)
+    primary = fits.PrimaryHDU(
+        header=fits.Header(_tag({}).items()),
+    )
+    gti_data, gti_header = gti
+    gti = fits.BinTableHDU.from_columns(
+        gti_data,
+        header=gti_header,
+        name="STDGTI",
+    )
+    data = fits.BinTableHDU.from_columns(
+        data,
+        header=fits.Header(_compile_data_header(configuration).items()),
+        name="TRIGGERS",
+    )
+    fits.HDUList([primary, gti, data]).writeto(filepath)
 
 
 def write_catalog(
@@ -52,60 +114,25 @@ def write_catalog(
         configuration: dict,
 ):
     """Write results to fits under catalog mode."""
-    data = pd.DataFrame(events).to_records(index=False)
-    _write_results_fits(
-        data,
-        filepath,
-        primary_header=fits.Header(_tag({}).items()),
-        data_header=fits.Header(_compile_data_header(configuration).items()),
-    )
-
-
-def _write_results_fits(
-        data: np.recarray,
-        filepath: Path | str,
-        primary_header: fits.Header | None = None,
-        data_header: fits.Header | None = None,
-):
-    """Savesto a single fits file writing configuration in the file data HDU header."""
+    data = pd.DataFrame(
+        {
+            "BKG_PRE_START": [e.bkg_pre_start for e in events],
+            "BKG_PRE_STOP": [e.bkg_pre_end for e in events],
+            "START": [e.start for e in events],
+            "STOP": [e.end for e in events],
+            "BKG_POST_START": [e.bkg_post_start for e in events],
+            "BKG_POST_STOP": [e.bkg_post_end for e in events],
+        }
+    ).to_records(index=False)
     primary = fits.PrimaryHDU(
-        header=primary_header,
+        header=fits.Header(_tag({}).items()),
     )
     data = fits.BinTableHDU.from_columns(
         data,
-        header=data_header,
+        header=fits.Header(_compile_data_header(configuration).items()),
         name="TRIGGERS",
     )
     fits.HDUList([primary, data]).writeto(filepath)
-
-
-def _write_src(event: Event, filepath: Path, configuration: dict, header: fits.Header | None = None):
-    """A helper for writing an event's source output file.
-    Primary HDU header is the HDU of the GTI where the event start time is."""
-    data = pd.DataFrame([event])[["start", "end"]].to_records(index=False)
-    _write_results_fits(
-        data,
-        filepath,
-        primary_header=header,
-        data_header=fits.Header(_compile_data_header(configuration).items()),
-    )
-
-
-def _write_bkg(e: Event, filepath: Path, configuration: dict, header: fits.Header | None = None):
-    """A helper for writing an event's background output file.
-    Primary HDU header is the HDU of the GTI where the event start time is."""
-    data = pd.DataFrame(
-        {
-            "bkg_start": [e.bkg_pre_start, e.bkg_post_start],
-            "bkg_end": [e.bkg_post_start, e.bkg_post_end],
-        }
-    ).to_records(index=False)
-    _write_results_fits(
-        data,
-        filepath,
-        primary_header=header,
-        data_header=fits.Header(_compile_data_header(configuration).items()),
-    )
 
 
 def _flat(d: dict) -> dict:
