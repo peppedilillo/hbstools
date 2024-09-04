@@ -336,7 +336,15 @@ def search_validate_config(
     return validated_config
 
 
-@cli.command()
+DEFAULT_RECLIM = -1
+
+def search_validate_reclim(ctx: click.Context, param: click.Option, reclim: int) -> int:
+    if reclim != DEFAULT_RECLIM and reclim < 0:
+        raise click.BadParameter("Flag `reclim` should be either non-negative or -1.")
+    return reclim
+
+
+@cli.command(context_settings={'show_default': True})
 @click.argument(
     "input_dirs",
     type=click.Path(exists=True, file_okay=False, path_type=Path),
@@ -358,7 +366,8 @@ def search_validate_config(
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     callback=search_validate_config,
     help="Path to a YAML configuration file. "
-    "If not provided, values from a default configuration are used.",
+    "If not provided, values from a default configuration are used. "
+    "You can get a copy of the default configuration using `mercury drop`."
 )
 @click.option(
     "--evtpattern",
@@ -379,17 +388,22 @@ def search_validate_config(
     "--mode",
     "mode",
     type=click.Choice(["catalog", "library"]),
-    default="catalog",
-    help="Formats the output. In `catalog` mode a single fits file is created."
-    "In `library` mode, a folder or fits file is generated",
+    default="library",
+    help="Formats the output. In `catalog` mode a single fits file is created. "
+    "In `library` mode, a folder or fits file is generated.",
 )
 @click.option(
     "--reclim",
-    "recursion_limit",
+    "reclim",
     type=click.INT,
-    default=1,
-    help="Mercury uses a filesystem crawler to locate data in subdirectories."
-    "This parameter sets a limit to recursion depth, how deep subfolders are searched.",
+    default=-1,
+    callback=search_validate_reclim,
+    help="Mercury uses a filesystem crawler to locate data in subdirectories. "
+    "This parameter sets a limit to recursion depth, how deep subfolders are searched. "
+    "A value of 0 limits search to the input folder."
+    "When reclim is set to -1, recursion depth is set to 0 if mercury search is executed with "
+    "multiple arguments (e.g., `mercury search dir1 dir2`), else---if mercury search is "
+    "executed on a single argument (e.g. `mercury search dir`)---recursion depth is set to 1 ",
 )
 @click.pass_context
 def search(
@@ -400,7 +414,7 @@ def search(
     evt_pattern: str,
     gti_pattern: str,
     mode: str,
-    recursion_limit: int,
+    reclim: int,
 ):
     """Searches transients from data in the input directories.
     The algorithm used for this search is called Poisson-FOCuS (Ward, 2022; Dilillo, 2024).
@@ -413,10 +427,12 @@ def search(
     console.log(f"Loaded {fmt_filename(config_file)} configuration.")
     console.log(f"Algorithm {ctx.obj['search_algoname']} matches the configuration.")
 
+    if reclim == DEFAULT_RECLIM:
+        reclim = 0 if len(input_dirs) > 1 else 1
     patterns = [evt_pattern, gti_pattern]
     data_paths = {
         subdir for directory in input_dirs
-        for subdir in crawler(directory, patterns, recursion_limit)
+        for subdir in crawler(directory, patterns, reclim)
     }
     if not data_paths:
         console.print("\nFound no data. Exiting.\n")
