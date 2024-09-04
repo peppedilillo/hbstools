@@ -361,6 +361,20 @@ def search_validate_config(
     "If not provided, values from a default configuration are used.",
 )
 @click.option(
+    "--evtpattern",
+    "evt_pattern",
+    type=click.STRING,
+    default="*_lv1_cl.evt",
+    help="Sets a glob pattern for identifying event files.",
+)
+@click.option(
+    "--gtipattern",
+    "gti_pattern",
+    type=click.STRING,
+    default="*gti.fits",
+    help="Sets a glob pattern for identifying gti files.",
+)
+@click.option(
     "-m",
     "--mode",
     "mode",
@@ -383,6 +397,8 @@ def search(
     input_dirs: tuple[Path],
     output: Path,
     configuration: dict,
+    evt_pattern: str,
+    gti_pattern: str,
     mode: str,
     recursion_limit: int,
 ):
@@ -397,7 +413,7 @@ def search(
     console.log(f"Loaded {fmt_filename(config_file)} configuration.")
     console.log(f"Algorithm {ctx.obj['search_algoname']} matches the configuration.")
 
-    patterns = ["*_lv1_cl.evt", "*gti.fits"]
+    patterns = [evt_pattern, gti_pattern]
     data_paths = {
         subdir for directory in input_dirs
         for subdir in crawler(directory, patterns, recursion_limit)
