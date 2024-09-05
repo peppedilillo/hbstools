@@ -110,7 +110,7 @@ algorithm_params:
  # The higher the threshold, the less false positive but the more false negative.
  # The threshold is expressed in units of standard deviations.
  # Must be greater than 0.
- thr_std: 4.5
+ thr_std: 5.0
 
  # The `mu_min` key set a focus parameter for killing old changepoints, which 
  # most likely will never result in a trigger. 
