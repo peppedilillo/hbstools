@@ -1,6 +1,6 @@
 import unittest
 
-from hbstools.io import read_event_files
+from hbstools.read import read_event_files
 
 dataset_directory = "./data_100s_stronganomaly60s/out_lv1_cl.evt"
 df = read_event_files(dataset_directory)

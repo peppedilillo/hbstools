@@ -7,8 +7,8 @@ from astropy.io import fits
 import numpy as np
 import yaml
 
-import hbstools as hbs
 from hbstools.data import map_event_to_files
+from hbstools.read import read_gti_file
 from hbstools.types import Dataset
 from hbstools.types import Event
 
@@ -36,7 +36,7 @@ def write_library(
     for n, (event, (_, gti_path)) in enumerate(
         map_event_to_files(events, dataset).items()
     ):
-        gti_content = hbs.io.read_gti_file(gti_path)
+        gti_content = read_gti_file(gti_path)
         _write_src(
             event,
             src_path := dir_path / f"event-src-{n:0{pad}}.fits",

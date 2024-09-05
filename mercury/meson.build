@@ -2,7 +2,7 @@ py.install_sources(
   [
     '__init__.py',
     'mercury.py',
-    'io.py',
+    'write.py',
   ],
   subdir: 'mercury'
 )

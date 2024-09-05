@@ -16,8 +16,8 @@ from yaml import safe_load as read_yaml
 from yaml import YAMLError
 
 import hbstools as hbs
-from mercury.io import write_catalog
-from mercury.io import write_library
+from mercury.write import write_catalog
+from mercury.write import write_library
 
 LOGO = """
                         

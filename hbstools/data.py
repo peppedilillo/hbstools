@@ -6,8 +6,8 @@ from _bisect import bisect_right
 import numpy as np
 import pandas as pd
 
-from hbstools.io import read_event_files
-from hbstools.io import read_gti_data
+from hbstools.read import read_event_files
+from hbstools.read import read_gti_data
 from hbstools.types import Dataset
 from hbstools.types import Event
 from hbstools.types import GTI
