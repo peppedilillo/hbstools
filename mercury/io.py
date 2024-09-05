@@ -5,7 +5,6 @@ from uuid import uuid4
 
 from astropy.io import fits
 import numpy as np
-import pandas as pd
 import yaml
 
 import hbstools as hbs
@@ -65,12 +64,15 @@ def _write_src(
 ):
     """A helper for writing an event's source output file.
     Primary HDU header is the HDU of the GTI where the event start time is."""
-    data = pd.DataFrame(
-        {
-            "START": [event.start],
-            "STOP": [event.stop],
-        }
-    ).to_records(index=False)
+    data = np.array(
+        [
+            (event.start, event.stop),
+        ],
+        dtype=[
+            ("START", "f8"),
+            ("STOP", "f8"),
+        ],
+    )
     primary = fits.PrimaryHDU(
         header=fits.Header(_tag({}).items()),
     )
@@ -96,12 +98,16 @@ def _write_bkg(
 ):
     """A helper for writing an event's background output file.
     Primary HDU header is the HDU of the GTI where the event start time is."""
-    data = pd.DataFrame(
-        {
-            "BKG_START": [event.bkg_pre_start, event.bkg_post_start],
-            "BKG_STOP": [event.bkg_post_start, event.bkg_post_stop],
-        }
-    ).to_records(index=False)
+    data = np.array(
+        [
+            (event.bkg_pre_start, event.bkg_post_start),
+            (event.bkg_post_start, event.bkg_post_stop),
+        ],
+        dtype=[
+            ("BKG_START", "f8"),
+            ("BKG_STOP", "f8"),
+        ],
+    )
     primary = fits.PrimaryHDU(
         header=fits.Header(_tag({}).items()),
     )
@@ -125,16 +131,17 @@ def write_catalog(
     configuration: dict,
 ):
     """Write results to fits under catalog mode."""
-    data = pd.DataFrame(
-        {
-            "BKG_PRE_START": [e.bkg_pre_start for e in events],
-            "BKG_PRE_STOP": [e.bkg_pre_stop for e in events],
-            "START": [e.start for e in events],
-            "STOP": [e.stop for e in events],
-            "BKG_POST_START": [e.bkg_post_start for e in events],
-            "BKG_POST_STOP": [e.bkg_post_stop for e in events],
-        }
-    ).to_records(index=False)
+    data = np.array(
+        [e for e in events],
+        dtype=[
+            ("BKG_PRE_START", "f8"),
+            ("BKG_PRE_STOP", "f8"),
+            ("START", "f8"),
+            ("STOP", "f8"),
+            ("BKG_POST_START", "f8"),
+            ("BKG_POST_STOP", "f8"),
+        ],
+    )
     primary = fits.PrimaryHDU(
         header=fits.Header(_tag({}).items()),
     )
@@ -147,22 +154,23 @@ def write_catalog(
 
 
 def _flat(d: dict) -> dict:
-    """Flattens a dictionary recursively.
+    """Flattens a dictionary recursively. Pure.
+    Careful! Will overwrite a key, see key `a` in example.
     Example:
-    In  = {"a": 1, "b": 2, "c": {"d": 3, "e": 4}}
-    Out = {"a": 1, "b": 2, "d": 3, "e": 4}
+    In  = {"a": 1, "b": 2, "c": {"a": "OVERWRITE", "d": 3, "e": 4}}
+    Out = {"a": "OVERWRITE", "b": 2, "d": 3, "e": 4}
     """
 
-    def helper(s, acc):
-        if not s:
+    def helper(s, acc, keys):
+        if not keys:
             return acc
-        k, v = s.popitem()
+        v = s[k := keys.pop(0)]
         if not isinstance(v, dict):
-            return helper(s, acc | {k: v})
+            return helper(s, acc | {k: v}, keys)
         else:
-            return helper(s, helper(v, {}))
+            return helper(s, acc | helper(v, {}, [*v.keys()]), keys)
 
-    return helper(d, {})
+    return helper(d, {}, [*d.keys()])
 
 
 def _short(d: dict) -> dict:
