@@ -7,6 +7,7 @@ from astropy.io import fits
 import numpy as np
 import yaml
 
+from hbstools import __version__
 from hbstools.data import map_event_to_files
 from hbstools.read import read_gti_file
 from hbstools.types import Dataset
@@ -185,9 +186,8 @@ def _vstring(d: dict) -> dict:
 
 def _tag(d: dict) -> dict:
     """Adds a number of mercury-specific tags"""
-    # TODO: add a version tag.
     return d | {
-        "CREATOR": "hbst-mercury",
+        "CREATOR": f"hbst-mercury v.{__version__}",
         "DATE": datetime.now().strftime("%m/%d/%Y-%H:%M:%S"),
     }
 
