@@ -7,9 +7,8 @@ the Italian National Institute for Astrophysics and the Italian Space Agency.
 It is composed of a main library, called `hbstools`, and a collection of scripts to interface with it.
 HERMES Burst Search Tools uses a changepoint detection algorithm called Poisson FOCuS to search for astrophysical events, see:
 
+* _Dilillo, G., Ward, K., Eckley, I. A., Fearnhead, P., Crupi, R., Evangelista, Y., Vacchi, A., & Fiore, F. (2023). Gamma-ray burst detection with Poisson-FOCuS and other trigger algorithms. The Astrophysical Journal, 962(2), 137._
 * _Ward, K., Dilillo, G., Eckley, I., & Fearnhead, P. (2023). Poisson-FOCuS: An efficient online method for detecting count bursts with application to gamma ray burst detection. Journal of the American Statistical Association, 1-13._
-* _Dilillo, G., Ward, K., Eckley, I. A., Fearnhead, P., Crupi, R., Evangelista, Y., Vacchi, A., & Fiore, F. (2023). Gamma-ray burst detection with Poisson-FOCuS and other trigger algorithms. arXiv preprint arXiv:2312.08817._
-
 
 # Setup
 ## TL:DR
